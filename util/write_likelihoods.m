@@ -1,4 +1,4 @@
-function [] = write_likelihoods(kal_root,dat_dir,nn_model)
+function [] = write_likelihoods(kal_root,dat_dir,num_files,nn_model)
 % Takes as input , location of Kaldi source, a data directory 
 % with NN input data and a neural net model to use for forward
 % propagation, data will be written in kaldi readable binary
@@ -11,13 +11,17 @@ function [] = write_likelihoods(kal_root,dat_dir,nn_model)
 %             this is also where the binary likelihoods will be 
 %             dumped
 % nn_model :  info needed to call forward propagate (code not yet written)
-   
+
+%loop over all files in data dir
+for fn=1:num_files
+
 %%Setup
 %File where log likelihoods are written
-ll_out = [dat_dir 'loglikelihoods.ark'];
+ll_format = [dat_dir 'loglikelihoods_%d.ark'];
+ll_out = sprintf(ll_format,fn);
 
 %Load features alignments and keys
-[feats alis utt_dat] = load_kaldi_data(dat_dir);
+[feats alis utt_dat] = load_kaldi_data(dat_dir,fn);
 
 %Load priors from ali_train_pdf.counts
 prior_file = 'kaldi-trunk/egs/swbd/s5/exp/tri4a_dnn/ali_train_pdf.counts';
@@ -42,7 +46,7 @@ fid = fopen(ll_out,'w');
 
 chunkSize = 100; %Size of utterance chunks to forward prop at a time
 numChunks = ceil(numUtts/100);
-numDone = 0; %Number of total frames written
+numFramesDone = 0; %Number of total frames written
 numUttsDone = 0; %Number of utterances written
 
 for i=1:numChunks
@@ -53,15 +57,19 @@ for i=1:numChunks
     subSizes=utt_dat.sizes((i-1)*chunkSize+1:end,:);
   else
     subKeys=utt_dat.keys((i-1)*chunkSize+1:i*chunkSize);
-    subSizes=utt_dat.sizes((i-1)*chunkSize+1:i*chunkSize,:);
+    subSizes=utt_dat.sizes((i-1)*chunkSize+1:i*chunkSize);
   end
 
-  input = feats(numDone+1:numDone+1+sum(subSizes),:);    
-    
+  input = feats(numFramesDone+1:numFramesDone+sum(subSizes),:);    
   %%%%%%%%%%%%%
   %TODO Load Neural Net
   %TODO Forward Prop input
-  output = rand(size(input,1),size(priors,2)); %filler data
+  %%% For unit testing
+  inputalis = alis(numFramesDone+1:numFramesDone+sum(subSizes))+1;
+  output = 1e-6*ones(size(input,1),size(priors,2));
+  output(sub2ind(size(output),(1:size(input,1))',inputalis))=.999;
+
+  %  output = rand(size(input,1),size(priors,2)); %filler data
   %%%%%%%%%%%%%
 
   %take log of forward propped dat and add log inverse priors
@@ -99,16 +107,16 @@ for i=1:numChunks
 % $$$           fprintf(fid,'\n');
 % $$$         end
 % $$$       end
-
-
      numFramesWrit = numFramesWrit+uttSize;
-
   end
   numUttsDone = numUttsDone+length(subKeys);
-  fprintf('%d of %d utterances written\n',numUttsDone,numUtts);
+  numFramesDone = numFramesDone+sum(subSizes);
 end
+
+fprintf('%d of %d files written\n',fn,num_files);
 
 %close log likelihood file
 fclose(fid);
+end
 
 end
