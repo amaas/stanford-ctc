@@ -1,11 +1,11 @@
-function [ cost, grad, numCorrect, numExamples, ceCost, wCost] = spNetCostSlave( theta,eI)
+function [ cost, grad, numCorrect, numExamples, ceCost, wCost] = spNetCostSlave( theta, eI, data, labels)
 %SPNETCOSTSLAVE Slave cost function for simple phone net
 %   Does all the work of cost / gradient computation
 %   Returns cost broken into cross-entropy, weight norm, and prox reg
 %        components (ceCost, wCost, pCost)
 
-global data;
-global labels;
+%global data;
+%global labels;
 %% setup aggregators
 cost=0;
 wCost = 0;
