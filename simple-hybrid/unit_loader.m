@@ -2,10 +2,11 @@
 addpath ../util/
 
 dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-    'kaldi-trunk/egs/swbd/s5/exp/nn_data/'];
-dat_dir = 'tmp/';
+    'kaldi-trunk/egs/swbd/s5/exp/nn_data_dev/'];
 
-[f, a, utt_dat] = load_kaldi_data(dat_dir);
+file_num = 1; %specifies which file to load
+
+[f, a, utt_dat] = load_kaldi_data(dat_dir,file_num);
 
 disp(size(f))
 disp(size(a))

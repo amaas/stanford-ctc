@@ -1,4 +1,4 @@
-function [feats, alis] = load_kaldi_data(git_root, feats_subdir, ali_subdir)
+function [feats, alis] = load_kaldi_data_old(git_root, feats_subdir, ali_subdir)
   %% Returns feats and alis matrix and vector with feature and alignment data
   % Input:
   % kaldi_dir is top level location of example 
