@@ -17,8 +17,6 @@ disp(eI);
 stack = initialize_weights(eI);
 theta = stack2params(stack);
 m = 100;
-global data;
-global labels;
 data = randn(m, eI.inputDim)';
 labels = randn(eI.outputDim,m,1)';
 [~,labels] = max(labels,[], 2);
@@ -26,4 +24,4 @@ labels = randn(eI.outputDim,m,1)';
 options.display = 'iter';
 options.derivativeCheck = 'on';
 [theta, fVal, coFlag, coInfo] = minFunc(@spNetCostSlave, ...
-    theta, options, eI);
+    theta, options, eI, data, labels);

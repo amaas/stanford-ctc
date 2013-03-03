@@ -3,6 +3,7 @@ function stack = params2stack(params, eI)
 % Converts a flattened parameter vector into a nice "stack" structure 
 % for us to work with. This is useful when you're building multilayer
 % networks.
+% Casts weight matrices to GPU if it is in use (eI.useGpu)
 %
 % stack = params2stack(params, netconfig)
 %
@@ -35,6 +36,12 @@ for d = 1:depth
     
     % Set previous layer size
     prevLayerSize = hidden;
+    
+    % move to gpu
+    if eI.useGpu
+        stack{d}.b = gdouble(stack{d}.b);
+        stack{d}.W = gdouble(stack{d}.W);
+    end;
 end
 
 end
