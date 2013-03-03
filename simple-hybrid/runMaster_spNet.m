@@ -36,14 +36,15 @@ for t = startT : eI.numEpoch
     %% run optimizer
     % TODO split optimizer to separate function if necessary
     numMb = floor(numExamples / eI.miniBatchSize);
+    tic;
     for m = 1 : eI.miniBatchSize : (eI.miniBatchSize * numMb)
         mbFeat = feat(m:(m+eI.miniBatchSize-1),:)';
-        mbLabel = label_ind(m:(m+eI.miniBatchSize-1));
+        mbLabel = label_ind(m:(m+eI.miniBatchSize-1));        
         [f, g] = spNetCostSlave(theta, eI, mbFeat, mbLabel);
         theta = theta - eI.sgdLearningRate * g;
         fValHist = [fValHist; f / eI.miniBatchSize];
     end;
-    
+    toc;
     %% cache
     if mod(t,10) == 1
         fullFilename = sprintf('tmp/spNet_%d.mat', t);

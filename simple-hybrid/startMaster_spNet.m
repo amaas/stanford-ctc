@@ -14,7 +14,7 @@ eI = [];
 eI.useGpu = 0;
 eI.inputDim = 300;
 eI.outputDim = 3034;
-eI.layerSizes = [500, 500, eI.outputDim];
+eI.layerSizes = [2048, 2048, 2048, eI.outputDim];
 eI.lambda = 1e-5;
 eI.activationFn = 'tanh';
 
@@ -24,10 +24,14 @@ eI.numEpoch = 1000;
 % 'sgdMinFunc' uses non-minFunc sgd with learning rates in eI
 optimOpt.Method = 'sgdMinFunc';
 % setup learning rates Etc
-eI.miniBatchSize = 256;
+eI.miniBatchSize = 512;
 eI.sgdLearningRate = 1e-4;
 
-
+%% setup gpu
+if eI.useGpu
+    addpath('/afs/cs.stanford.edu/package/jacket/2.0-20111221/jacket/engine');
+    % TODO might want to warm up the GPU here
+end;
 %% call run script
 disp(eI);
 runMaster_spNet;
