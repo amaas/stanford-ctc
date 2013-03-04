@@ -17,6 +17,7 @@ eI.outputDim = 3034;
 eI.layerSizes = [2048, 2048, 2048, eI.outputDim];
 eI.lambda = 1e-5;
 eI.activationFn = 'tanh';
+eI.numFiles = 4; %number of files data is split into
 
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];

@@ -12,23 +12,33 @@ startT = 0;
 %     %eI.nu=1e-6;
 % end;
 
-%% load a chunk of data
-%dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-%    'kaldi-trunk/egs/swbd/s5/exp/nn_data/'];
-dat_dir = 'tmp/';
-%[feat, label_ind, utt_dat] = load_kaldi_data(dat_dir);
+%% Setup data loading
+dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
+    'kaldi-trunk/egs/swbd/s5/exp/nn_data_dev/'];
+%dat_dir = 'tmp/';
+
 % HACK loading tiny data instead
-load tmp/micro_feat.mat;
-% add 1 to kaldi 0-indexed state labels
-label_ind = label_ind + 1;
-assert(size(feat,1) == size(label_ind,1));
-numExamples = size(label_ind,1);
+%load tmp/micro_feat.mat;
+
+%Make random permutation of file to load for each epoch
+fileList = repmat(1:eI.numFiles,1,(eI.numEpoch/eI.numFiles));
+fileList = fileList(1:eI.numEpoch);
+fileList = fileList(randperm(eI.numEpoch));
+
+
 %% loop ower mini-batch epochs
 % storing the mb data in globals
 %global mbFeat;
 %global mbLabel;
 fValHist = [];
 for t = startT : eI.numEpoch
+    %load chunk of data
+    [feat, label_ind, utt_dat] = load_kaldi_data(dat_dir,fileList(t+1));
+
+    assert(size(feat,1) == size(label_ind,1));
+    numExamples = size(label_ind,1);
+
+
     % shuffle minibatches
     rp = randperm(numExamples);
     feat = feat(rp,:);
