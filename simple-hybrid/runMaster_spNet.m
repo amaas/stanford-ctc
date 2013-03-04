@@ -14,14 +14,14 @@ startT = 0;
 
 %% Setup data loading
 dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-    'kaldi-trunk/egs/swbd/s5/exp/nn_data_dev/'];
+    'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k/'];
 %dat_dir = 'tmp/';
 
 % HACK loading tiny data instead
 %load tmp/micro_feat.mat;
 
 %Make random permutation of file to load for each epoch
-fileList = repmat(1:eI.numFiles,1,(eI.numEpoch/eI.numFiles));
+fileList = repmat(1:eI.numFiles,1,ceil(eI.numEpoch/eI.numFiles));
 fileList = fileList(1:eI.numEpoch);
 fileList = fileList(randperm(eI.numEpoch));
 

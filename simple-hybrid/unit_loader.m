@@ -2,7 +2,7 @@
 addpath ../util/
 
 dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-    'kaldi-trunk/egs/swbd/s5/exp/nn_data_dev/'];
+    'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k/'];
 
 file_num = 1; %specifies which file to load
 
