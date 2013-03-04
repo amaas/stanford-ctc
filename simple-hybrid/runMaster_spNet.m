@@ -20,10 +20,6 @@ dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
 % HACK loading tiny data instead
 %load tmp/micro_feat.mat;
 
-%Make random permutation of file to load for each epoch
-fileList = repmat(1:eI.numFiles,1,ceil(eI.numEpoch/eI.numFiles));
-fileList = fileList(1:eI.numEpoch);
-fileList = fileList(randperm(eI.numEpoch));
 
 
 %% loop ower mini-batch epochs
@@ -32,33 +28,40 @@ fileList = fileList(randperm(eI.numEpoch));
 %global mbLabel;
 fValHist = [];
 for t = startT : eI.numEpoch
-    %load chunk of data
-    [feat, label_ind, utt_dat] = load_kaldi_data(dat_dir,fileList(t+1));
 
-    assert(size(feat,1) == size(label_ind,1));
-    numExamples = size(label_ind,1);
+    %Make random permutation of file to load for each epoch
+    fileList = randperm(eI.numFiles);
 
+    for fn = 1 : eI.numFiles
+        %load chunk of data
+        [feat, label_ind, utt_dat] = load_kaldi_data(dat_dir,fileList(fn));
+        assert(size(feat,1) == size(label_ind,1));
+        numExamples = size(label_ind,1);
 
-    % shuffle minibatches
-    rp = randperm(numExamples);
-    feat = feat(rp,:);
-    label_ind = label_ind(rp);
-    %% run optimizer
-    % TODO split optimizer to separate function if necessary
-    numMb = floor(numExamples / eI.miniBatchSize);
-    tic;
-    for m = 1 : eI.miniBatchSize : (eI.miniBatchSize * numMb)
-        mbFeat = feat(m:(m+eI.miniBatchSize-1),:)';
-        mbLabel = label_ind(m:(m+eI.miniBatchSize-1));        
-        [f, g] = spNetCostSlave(theta, eI, mbFeat, mbLabel);
-        theta = theta - eI.sgdLearningRate * g;
-        fValHist = [fValHist; f / eI.miniBatchSize];
-    end;
-    toc;
-    %% cache
-    if mod(t,10) == 1
-        fullFilename = sprintf('tmp/spNet_%d.mat', t);
+        % shuffle minibatches
+        rp = randperm(numExamples);
+        feat = feat(rp,:);
+        label_ind = label_ind(rp);
+        %% run optimizer
+        % TODO split optimizer to separate function if necessary
+        numMb = floor(numExamples / eI.miniBatchSize);
+
+        tic;
+        for m = 1 : eI.miniBatchSize : (eI.miniBatchSize * numMb)
+            mbFeat = feat(m:(m+eI.miniBatchSize-1),:)';
+            mbLabel = label_ind(m:(m+eI.miniBatchSize-1));        
+            [f, g] = spNetCostSlave(theta, eI, mbFeat, mbLabel);
+            theta = theta - eI.sgdLearningRate * g;
+            fValHist = [fValHist; f / eI.miniBatchSize];
+        end;
+        toc;
+
+        %% cache - save after seeing every utterance in each file
+        % every eI.numFiles saves will be a full pass over all the data
+        fullFilename = sprintf([eI.outputDir 'spNet_%d.mat'], t);
         save(fullFilename, 'eI','theta','stack','fValHist');
+
     end;
+
 end;
 

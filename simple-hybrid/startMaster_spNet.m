@@ -14,10 +14,15 @@ eI = [];
 eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
-eI.layerSizes = [2048, 2048, 2048, eI.outputDim];
+eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
 eI.lambda = 1e-5;
 eI.activationFn = 'tanh';
 eI.numFiles = 39; %number of files data is split into
+eI.outputDir = '4hidden_1024/';
+
+if ~exist(eI.outputDir,'dir')
+    mkdir(eI.outputDir);
+end
 
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
