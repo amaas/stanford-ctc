@@ -1,15 +1,15 @@
-function [ cost, grad, numCorrect, numExamples, ceCost, wCost] = spNetCostSlave( theta, eI, data, labels)
+function [ cost, grad, numCorrect, numExamples, ceCost, wCost, pred_prob] = spNetCostSlave( theta, eI, data, labels, pred_only)
 %SPNETCOSTSLAVE Slave cost function for simple phone net
 %   Does all the work of cost / gradient computation
 %   Returns cost broken into cross-entropy, weight norm, and prox reg
 %        components (ceCost, wCost, pCost)
 
-%global data;
-%global labels;
-%% setup aggregators
-cost=0;
-wCost = 0;
-grad=[];
+%% default values
+po = false;
+if exist('pred_only','var')
+  po = pred_only;
+end;
+
 %% reshape into network
 stack = params2stack(theta, eI);
 numHidden = numel(eI.layerSizes) - 1;
@@ -39,8 +39,16 @@ for i = 1 : numHidden
     end;
 end
 %% softmax layer
-hAct{end} = exp(bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b));
-hAct{end} = bsxfun(@rdivide,hAct{end},sum(hAct{end}));
+pred_prob = exp(bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b));
+pred_prob = bsxfun(@rdivide,pred_prob,sum(pred_prob));
+
+%% return here if only predictions desired. 
+if po
+  cost = -1; ceCost = -1; wCost = -1; numCorrect = -1;
+  grad = [];
+  numExamples = size(data,2);
+  return;
+end;
 
 %% get labels as matrix
 [n,m] = size(data);
@@ -49,18 +57,18 @@ if eI.useGpu
     groundTruth = gdouble(full(groundTruth));
 end;
 %% compute accuracy
-[~,pred] = max(hAct{end});
+[~,pred] = max(pred_prob);
 % accList = [accList; mean(pred'==curLabels)];
 % numExList = [numExList; m];
 numCorrect = double(sum(pred'==labels));
 
 %% compute cost
-cost = cost - sum(sum(log(hAct{end}) .* (groundTruth)));
+cost = (-1/m) * sum(sum(log(pred_prob) .* (groundTruth)));
 
 %% compute gradient for SM layer
-delta = hAct{end}-groundTruth;
-gradStack{end}.W = delta*hAct{end-1}';
-gradStack{end}.b = sum(delta, 2);
+delta =  pred_prob-groundTruth;
+gradStack{end}.W = (1/m)*delta*hAct{end-1}';
+gradStack{end}.b = (1/m)*sum(delta, 2);
 % prop error through SM layer
 delta = stack{end}.W'*delta;
 %% gradient for hidden layers
@@ -75,20 +83,20 @@ for i = numHidden:-1:1
     end;    
     % gradient for weight matrix
     if i > 1
-        gradStack{i}.W = delta*hAct{i-1}';
+        gradStack{i}.W = (1/m) * delta*hAct{i-1}';
     else
         % case for data as input
-        gradStack{i}.W = delta*data';
+        gradStack{i}.W = (1/m) * delta*data';
     end;    
     % gradient for bias
-    gradStack{i}.b = sum(delta,2);
+    gradStack{i}.b = (1/m) * sum(delta,2);
     % prop through weights for lower layer
     if i > 1
         delta = stack{i}.W' * delta;
     end;
 end;
 %% add weight norm penalties for non-bias terms
-numExamples = size(data,2);
+wCost = 0;
 % logistic layers
 for i=1:numHidden+1
     % GPU and CPU versions because norm is slow on cpu
@@ -98,10 +106,10 @@ for i=1:numHidden+1
         wCost = wCost + sum(stack{i}.W(:).^2);
     end;
     gradStack{i}.W =  gradStack{i}.W  + ...
-        2 * numExamples * eI.lambda * stack{i}.W;
+        2 * eI.lambda * stack{i}.W;
 end
 % scale wCost once it contains all weight norms
-wCost = wCost * eI.lambda * numExamples;
+wCost = wCost * eI.lambda;
 %% reshape gradients into vector
 [grad] = stack2params(gradStack);
 %% compute final cost
@@ -112,6 +120,7 @@ grad = double(grad);
 cost = double(cost);
 ceCost = double(ceCost);
 wCost = double(wCost);
+numExamples = m;
 end
 
 

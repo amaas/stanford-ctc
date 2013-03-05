@@ -27,11 +27,12 @@ end
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
 eI.numEpoch = 1000;
-% 'sgdMinFunc' uses non-minFunc sgd with learning rates in eI
-optimOpt.Method = 'sgdMinFunc';
+% 'adagrad' and 'sgd' are valid options here
+% learning rate for adagrad should be higher
+optimOpt.Method = 'adagrad';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-4;
+eI.sgdLearningRate = 1e-3;
 
 %% setup gpu
 if eI.useGpu
