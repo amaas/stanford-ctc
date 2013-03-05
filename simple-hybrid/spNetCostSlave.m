@@ -1,11 +1,15 @@
-function [ cost, grad, numCorrect, numExamples, ceCost, wCost] = spNetCostSlave( theta, eI, data, labels)
+function [ cost, grad, numCorrect, numExamples, ceCost, wCost, pred_prob] = spNetCostSlave( theta, eI, data, labels, pred_only)
 %SPNETCOSTSLAVE Slave cost function for simple phone net
 %   Does all the work of cost / gradient computation
 %   Returns cost broken into cross-entropy, weight norm, and prox reg
 %        components (ceCost, wCost, pCost)
 
-%global data;
-%global labels;
+%% default values
+po = false;
+if exist('pred_only','var')
+  po = pred_only;
+end;
+
 %% reshape into network
 stack = params2stack(theta, eI);
 numHidden = numel(eI.layerSizes) - 1;
@@ -35,8 +39,16 @@ for i = 1 : numHidden
     end;
 end
 %% softmax layer
-hAct{end} = exp(bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b));
-hAct{end} = bsxfun(@rdivide,hAct{end},sum(hAct{end}));
+pred_prob = exp(bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b));
+pred_prob = bsxfun(@rdivide,pred_prob,sum(pred_prob));
+
+%% return here if only predictions desired. 
+if po
+  cost = -1; ceCost = -1; wCost = -1; numCorrect = -1;
+  grad = [];
+  numExamples = size(data,2);
+  return;
+end;
 
 %% get labels as matrix
 [n,m] = size(data);
@@ -45,16 +57,16 @@ if eI.useGpu
     groundTruth = gdouble(full(groundTruth));
 end;
 %% compute accuracy
-[~,pred] = max(hAct{end});
+[~,pred] = max(pred_prob);
 % accList = [accList; mean(pred'==curLabels)];
 % numExList = [numExList; m];
 numCorrect = double(sum(pred'==labels));
 
 %% compute cost
-cost = (-1/m) * sum(sum(log(hAct{end}) .* (groundTruth)));
+cost = (-1/m) * sum(sum(log(pred_prob) .* (groundTruth)));
 
 %% compute gradient for SM layer
-delta =  hAct{end}-groundTruth;
+delta =  pred_prob-groundTruth;
 gradStack{end}.W = (1/m)*delta*hAct{end-1}';
 gradStack{end}.b = (1/m)*sum(delta, 2);
 % prop error through SM layer

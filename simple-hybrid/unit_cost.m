@@ -21,6 +21,10 @@ data = randn(m, eI.inputDim)';
 labels = randn(eI.outputDim,m,1)';
 [~,labels] = max(labels,[], 2);
 
+%% test predicitons only
+[~,~,~,~,~,~, pred] = spNetCostSlave(theta, eI, data, labels, true);
+disp(pred);
+%% check gradient
 options.display = 'iter';
 options.derivativeCheck = 'on';
 [theta, fVal, coFlag, coInfo] = minFunc(@spNetCostSlave, ...
