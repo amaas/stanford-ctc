@@ -108,6 +108,7 @@ grad = double(grad);
 cost = double(cost);
 ceCost = double(ceCost);
 wCost = double(wCost);
+numExamples = m;
 end
 
 
