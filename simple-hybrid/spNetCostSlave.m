@@ -6,10 +6,6 @@ function [ cost, grad, numCorrect, numExamples, ceCost, wCost] = spNetCostSlave(
 
 %global data;
 %global labels;
-%% setup aggregators
-cost=0;
-wCost = 0;
-grad=[];
 %% reshape into network
 stack = params2stack(theta, eI);
 numHidden = numel(eI.layerSizes) - 1;
@@ -55,12 +51,12 @@ end;
 numCorrect = double(sum(pred'==labels));
 
 %% compute cost
-cost = cost - sum(sum(log(hAct{end}) .* (groundTruth)));
+cost = (-1/m) * sum(sum(log(hAct{end}) .* (groundTruth)));
 
 %% compute gradient for SM layer
-delta = hAct{end}-groundTruth;
-gradStack{end}.W = delta*hAct{end-1}';
-gradStack{end}.b = sum(delta, 2);
+delta =  hAct{end}-groundTruth;
+gradStack{end}.W = (1/m)*delta*hAct{end-1}';
+gradStack{end}.b = (1/m)*sum(delta, 2);
 % prop error through SM layer
 delta = stack{end}.W'*delta;
 %% gradient for hidden layers
@@ -75,20 +71,20 @@ for i = numHidden:-1:1
     end;    
     % gradient for weight matrix
     if i > 1
-        gradStack{i}.W = delta*hAct{i-1}';
+        gradStack{i}.W = (1/m) * delta*hAct{i-1}';
     else
         % case for data as input
-        gradStack{i}.W = delta*data';
+        gradStack{i}.W = (1/m) * delta*data';
     end;    
     % gradient for bias
-    gradStack{i}.b = sum(delta,2);
+    gradStack{i}.b = (1/m) * sum(delta,2);
     % prop through weights for lower layer
     if i > 1
         delta = stack{i}.W' * delta;
     end;
 end;
 %% add weight norm penalties for non-bias terms
-numExamples = size(data,2);
+wCost = 0;
 % logistic layers
 for i=1:numHidden+1
     % GPU and CPU versions because norm is slow on cpu
@@ -98,10 +94,10 @@ for i=1:numHidden+1
         wCost = wCost + sum(stack{i}.W(:).^2);
     end;
     gradStack{i}.W =  gradStack{i}.W  + ...
-        2 * numExamples * eI.lambda * stack{i}.W;
+        2 * eI.lambda * stack{i}.W;
 end
 % scale wCost once it contains all weight norms
-wCost = wCost * eI.lambda * numExamples;
+wCost = wCost * eI.lambda;
 %% reshape gradients into vector
 [grad] = stack2params(gradStack);
 %% compute final cost
