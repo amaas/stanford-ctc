@@ -19,6 +19,10 @@ eI.lambda = 1e-5;
 eI.activationFn = 'tanh';
 eI.numFiles = 39; %number of files data is split into
 eI.outputDir = '4hidden_1024_diff_lr/';
+eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_big/'];
+
+
 
 if ~exist(eI.outputDir,'dir')
     mkdir(eI.outputDir);
@@ -26,10 +30,10 @@ end
 
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
-eI.numEpoch = 1000;
+eI.numEpoch = 10;
 % 'adagrad' and 'sgd' are valid options here
 % learning rate for adagrad should be higher
-optimOpt.Method = 'adagrad';
+optimOpt.Method = 'sgd';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
 eI.sgdLearningRate = 1e-3;
