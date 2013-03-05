@@ -26,6 +26,9 @@ feats = fread(fid,'float');
 %Load alignments from txt file
 alis = load(alis);
 
+%Add 1 to 0-indexed kaldi state labels
+alis = alis+1; 
+
 %Load key strings from txt file
 utt_dat = {};
 [utt_dat.keys utt_dat.sizes]= textread(keys,'%s %d');
