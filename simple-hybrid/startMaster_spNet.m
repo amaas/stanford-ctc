@@ -31,7 +31,7 @@ eI.numEpoch = 1000;
 optimOpt.Method = 'sgdMinFunc';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-3;
+eI.sgdLearningRate = 1e-4;
 
 %% setup gpu
 if eI.useGpu
