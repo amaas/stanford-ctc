@@ -11,7 +11,7 @@ addpath ../util;
 
 %% experiment parameters
 eI = [];
-eI.useGpu = 0;
+eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
 eI.layerSizes = [2048, 2048, 2048, eI.outputDim];
@@ -21,11 +21,12 @@ eI.activationFn = 'tanh';
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
 eI.numEpoch = 1000;
-% 'sgdMinFunc' uses non-minFunc sgd with learning rates in eI
-optimOpt.Method = 'sgdMinFunc';
+% 'adagrad' and 'sgd' are valid options here
+% learning rate for adagrad should be higher
+optimOpt.Method = 'adagrad';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-4;
+eI.sgdLearningRate = 1e-3;
 
 %% setup gpu
 if eI.useGpu
