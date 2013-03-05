@@ -18,7 +18,7 @@ eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
 eI.lambda = 1e-5;
 eI.activationFn = 'tanh';
 eI.numFiles = 39; %number of files data is split into
-eI.outputDir = '4hidden_1024/';
+eI.outputDir = '4hidden_1024_diff_lr/';
 
 if ~exist(eI.outputDir,'dir')
     mkdir(eI.outputDir);
@@ -31,7 +31,7 @@ eI.numEpoch = 1000;
 optimOpt.Method = 'sgdMinFunc';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-4;
+eI.sgdLearningRate = 1e-3;
 
 %% setup gpu
 if eI.useGpu
