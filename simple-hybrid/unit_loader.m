@@ -6,9 +6,9 @@ dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
 
 file_num = 1; %specifies which file to load
 
-[f, a, utt_dat] = load_kaldi_data(dat_dir,file_num);
+[f, utt_dat, a] = load_kaldi_data(dat_dir,file_num);
 
 disp(size(f))
-disp(size(a))
 disp(size(utt_dat.keys))
 disp(size(utt_dat.sizes))
+disp(size(a))

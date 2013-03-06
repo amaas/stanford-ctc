@@ -15,8 +15,9 @@ startT = 0;
 % end;
 
 %% Setup data loading
-dat_dir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-    'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k/'];
+dat_dir =eI.datDir;
+% ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
+         %'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_big/'];
 %dat_dir = 'tmp/';
 % HACK loading tiny data instead
 %load tmp/micro_feat.mat;
@@ -33,7 +34,7 @@ for t = startT : eI.numEpoch
 
     for fn = 1 : eI.numFiles
         %load chunk of data
-        [feat, label_ind, utt_dat] = load_kaldi_data(dat_dir,fileList(fn));
+        [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn));
         assert(size(feat,1) == size(label_ind,1));
         numExamples = size(label_ind,1);
 
@@ -67,7 +68,7 @@ for t = startT : eI.numEpoch
 
         %% cache - save after seeing every utterance in each file
         % every eI.numFiles saves will be a full pass over all the data
-        fullFilename = sprintf([eI.outputDir 'spNet_%d.mat'], t);
+        fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
         save(fullFilename, 'eI','theta','stack','fValHist','accHist');
     end;
 

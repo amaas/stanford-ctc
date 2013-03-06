@@ -12,6 +12,13 @@ function [] = write_likelihoods(kal_root,dat_dir,num_files,nn_model)
 %             dumped
 % nn_model :  info needed to call forward propagate (code not yet written)
 
+%add path to forward prop code
+addpath ../simple-hybrid;
+
+%load network params
+load(nn_model,'eI','theta');
+eI.useGpu = 0; %don't use the gpu as likely too much memory
+
 %loop over all files in data dir
 for fn=1:num_files
 
@@ -20,8 +27,8 @@ for fn=1:num_files
 ll_format = [dat_dir 'loglikelihoods_%d.ark'];
 ll_out = sprintf(ll_format,fn);
 
-%Load features alignments and keys
-[feats alis utt_dat] = load_kaldi_data(dat_dir,fn);
+%Load features and data (keys and utt sizes)
+[feats utt_dat] = load_kaldi_data(dat_dir,fn);
 
 %Load priors from ali_train_pdf.counts
 prior_file = 'kaldi-trunk/egs/swbd/s5/exp/tri4a_dnn/ali_train_pdf.counts';
@@ -49,6 +56,8 @@ numChunks = ceil(numUtts/100);
 numFramesDone = 0; %Number of total frames written
 numUttsDone = 0; %Number of utterances written
 
+
+
 for i=1:numChunks
 
   %Get subset of keys and subset of sizes to forward prop and write
@@ -61,19 +70,22 @@ for i=1:numChunks
   end
 
   input = feats(numFramesDone+1:numFramesDone+sum(subSizes),:);    
+
+  
+
   %%%%%%%%%%%%%
-  %TODO Load Neural Net
-  %TODO Forward Prop input
-  %%% For unit testing
-  inputalis = alis(numFramesDone+1:numFramesDone+sum(subSizes))+1;
-  output = 1e-6*ones(size(input,1),size(priors,2));
-  output(sub2ind(size(output),(1:size(input,1))',inputalis))=.999;
+  % Oracle setup for unit testing
+  %  inputalis = alis(numFramesDone+1:numFramesDone+sum(subSizes))+1;
+  %output = 1e-6*ones(size(input,1),size(priors,2));
+  %output(sub2ind(size(output),(1:size(input,1))',inputalis))=.999;
 
   %  output = rand(size(input,1),size(priors,2)); %filler data
   %%%%%%%%%%%%%
 
+  [c, g, nC, nE, ceC, wC, output] = spNetCostSlave(theta,eI,input',[],1);
+
   %take log of forward propped dat and add log inverse priors
-  output = bsxfun(@plus,log(output),priors);
+  output = bsxfun(@plus,log(output'),priors);
 
   %Write each utterance separately so we can write as key value pairs
   numFramesWrit = 0;
