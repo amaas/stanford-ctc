@@ -15,10 +15,10 @@ eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
 eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
-eI.lambda = 1e-5;
+eI.lambda = 1e-7;
 eI.activationFn = 'tanh';
 eI.numFiles = 39; %number of files data is split into
-eI.outputDir = 'tmp/ada_4x1024/';
+eI.outputDir = 'tmp/ada_4x1024_lr_1e-1/';
 
 if ~exist(eI.outputDir,'dir')
     mkdir(eI.outputDir);
@@ -29,10 +29,10 @@ optimOpt = [];
 eI.numEpoch = 1000;
 % 'adagrad' and 'sgd' are valid options here
 % learning rate for adagrad should be higher
-optimOpt.Method = 'adagrad';
+optimOpt.Method = 'sgd';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-3;
+eI.sgdLearningRate = 1e-1;
 
 %% setup gpu
 if eI.useGpu
