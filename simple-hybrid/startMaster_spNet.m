@@ -15,12 +15,12 @@ eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
 eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
-eI.lambda = 1e-5;
+eI.lambda = 1e-7;
 eI.activationFn = 'tanh';
 eI.numFiles = 39; %number of files data is split into
-eI.outputDir = '4hidden_1024_diff_lr/';
+eI.outputDir = '4hidden_1024_shuff/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_big/'];
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff/'];
 
 
 
@@ -36,7 +36,7 @@ eI.numEpoch = 10;
 optimOpt.Method = 'sgd';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-3;
+eI.sgdLearningRate = 1e-1;
 
 %% setup gpu
 if eI.useGpu

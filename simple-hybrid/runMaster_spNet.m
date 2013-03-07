@@ -68,7 +68,7 @@ for t = startT : eI.numEpoch
 
         %% cache - save after seeing every utterance in each file
         % every eI.numFiles saves will be a full pass over all the data
-        fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
+        fullFilename = sprintf([eI.outputDir 'spNet_%d.mat'], t);
         save(fullFilename, 'eI','theta','stack','fValHist','accHist');
     end;
 
