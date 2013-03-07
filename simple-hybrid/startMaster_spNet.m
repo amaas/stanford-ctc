@@ -23,7 +23,6 @@ eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
 'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff/'];
 
 
-
 if ~exist(eI.outputDir,'dir')
     mkdir(eI.outputDir);
 end
