@@ -17,10 +17,10 @@ eI.outputDim = 3034;
 eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
 eI.lambda = 1e-7;
 eI.activationFn = 'tanh';
-eI.numFiles = 39; %number of files data is split into
+eI.numFiles = 8; %number of files data is split into
 eI.outputDir = '4hidden_1024_shuff/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff/'];
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff_big/'];
 
 
 if ~exist(eI.outputDir,'dir')
