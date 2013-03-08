@@ -11,7 +11,7 @@ eI.inputDim = 3;
 eI.outputDim = 4;
 eI.layerSizes = [4 2, eI.outputDim];
 eI.lambda = 0; %1e-5;
-eI.activationFn = 'tanh';
+eI.activationFn = 'relu';
 disp(eI);
 %% initialize weights and synthetic data
 stack = initialize_weights(eI);
@@ -27,5 +27,6 @@ disp(pred);
 %% check gradient
 options.display = 'iter';
 options.derivativeCheck = 'on';
+options.maxIter = 10;
 [theta, fVal, coFlag, coInfo] = minFunc(@spNetCostSlave, ...
     theta, options, eI, data, labels);
