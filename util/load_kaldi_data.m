@@ -4,6 +4,9 @@ function [feats, utt_dat, alis] = load_kaldi_data(data_dir, file_num)
 % data_dir is subdirectory with written feats binary file and ali and key txt files
 %    e.g. /afs/cs.stanford.edu/u/awni/luster_awni/kaldi-trunk/egs/swbd/s5/exp/nn_data/
 
+%%TODO set feat dim from eI
+featDim = 300;
+
 featsf = sprintf([data_dir 'feats%d.bin'],file_num);
 alisf = sprintf([data_dir 'alis%d.txt'],file_num);
 keysf = sprintf([data_dir 'keys%d.txt'],file_num);
@@ -18,7 +21,7 @@ end
 
 %Load features from binary file
 fid = fopen(featsf);
-feats = fread(fid,'float');
+feats = fread(fid,[featDim inf],'float');
 
 %Load alignments from txt file if it exists
 if exist(alisf,'file')
@@ -33,9 +36,9 @@ end
 utt_dat = {};
 [utt_dat.keys utt_dat.sizes]= textread(keysf,'%s %d');
 
-numSamples = sum(utt_dat.sizes);
-featdim = size(feats,1)/numSamples;
+%numSamples = sum(utt_dat.sizes);
+%featdim = size(feats,1)/numSamples;
 
-feats = reshape(feats',featdim,numSamples)';
-
+%feats = reshape(feats',featDim,numSamples)';
+feats = feats';
 end
