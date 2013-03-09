@@ -4,7 +4,7 @@ rand('seed',1);
 stack = initialize_weights(eI);
 theta = stack2params(stack);
 % this is only used by adagrad
-sumsqgrad = ones(size(theta)) * 1e-3;
+sumsqgrad = ones(size(theta));
 %% load a theta instead
 %% TODO fix loading partially trained model
 startT = 0;
@@ -26,7 +26,8 @@ dat_dir =eI.datDir;
 % storing the mb data in globals
 %global mbFeat;
 %global mbLabel;
-fValHist = [];
+ceValHist = [];
+wValHist = [];
 accHist = [];
 for t = startT : eI.numEpoch
     %Make random permutation of file to load for each epoch
@@ -42,15 +43,21 @@ for t = startT : eI.numEpoch
         rp = randperm(numExamples);
         feat = feat(rp,:);
         label_ind = label_ind(rp);
+        %% HACK randomly dropping some examples from the chunk
+        keep = rand(size(feat,1),1) < 0.5;
+        feat = feat(keep,:);
+        label_ind = label_ind(keep);
+        disp(size(feat));
+        numExamples = size(label_ind,1);
+
         %% run optimizer
         % TODO split optimizer to separate function if necessary
         numMb = floor(numExamples / eI.miniBatchSize);
-
         tic;
         for m = 1 : eI.miniBatchSize : (eI.miniBatchSize * numMb)
             mbFeat = feat(m:(m+eI.miniBatchSize-1),:)';
             mbLabel = label_ind(m:(m+eI.miniBatchSize-1));        
-            [f, g, nc, ne] = spNetCostSlave(theta, eI, mbFeat, mbLabel);
+            [f, g, nc, ne, ceCost, wCost] = spNetCostSlave(theta, eI, mbFeat, mbLabel);
             % choice of update rule
             if strcmpi(optimOpt.Method, 'adagrad')
                 % AdaGrad
@@ -61,16 +68,18 @@ for t = startT : eI.numEpoch
                 % SGD
                 theta = theta - (eI.sgdLearningRate * g);
             end;
-            fValHist = [fValHist; f];
+            ceValHist = [ceValHist; ceCost];
+            wValHist = [wValHist; wCost];
             accHist = [accHist; nc/ne];
         end;
         toc;
 
         %% cache - save after seeing every utterance in each file
         % every eI.numFiles saves will be a full pass over all the data
-        fullFilename = sprintf([eI.outputDir 'spNet_%d.mat'], t);
-        save(fullFilename, 'eI','theta','stack','fValHist','accHist');
+        % fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
+        fullFilename = sprintf([eI.outputDir 'spNet_e%d.mat'], t);
+        save(fullFilename, 'eI','theta','stack','ceValHist','wValHist','accHist');
     end;
-
+        % optimOpt.Method = 'adagrad';
 end;
 

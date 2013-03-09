@@ -34,6 +34,8 @@ for i = 1 : numHidden
         hAct{i} = tanh(hAct{i});
     elseif strcmpi(eI.activationFn,'logistic')
         hAct{i} = 1./(1+exp(-hAct{i}));
+    elseif strcmpi(eI.activationFn,'relu')
+        hAct{i} = max(hAct{i}, 0.01 .* hAct{i});
     else
         delta('unrecognized activation function: %s',eI.activationFn);
     end;
@@ -78,6 +80,9 @@ for i = numHidden:-1:1
         delta = delta .* (1 - hAct{i}.^2);
     elseif strcmpi(eI.activationFn,'logistic')
         delta = delta .* hAct{i} .* (1 - hAct{i});
+    elseif strcmpi(eI.activationFn,'relu')
+        % derivative only changes for places where hAct < 0
+        delta(hAct{i} < 0) = 0.01 .* delta(hAct{i} < 0);
     else
         delta('unrecognized activation function: %s',eI.activationFn);
     end;    
