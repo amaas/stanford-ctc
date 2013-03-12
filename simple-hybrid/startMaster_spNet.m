@@ -16,11 +16,11 @@ eI.inputDim = 300;
 eI.outputDim = 3034;
 eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
 eI.lambda = 1e-7;
-eI.activationFn = 'tanh';
-eI.numFiles = 8; %number of files data is split into
-eI.outputDir = '4hidden_1024_shuff/';
+eI.activationFn = 'relu';
+eI.numFiles = 16; %number of files data is split into
+eI.outputDir = '4hidden_1024_relu/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff_big/'];
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_fmllr/'];
 
 
 if ~exist(eI.outputDir,'dir')
@@ -34,7 +34,7 @@ eI.numEpoch = 10;
 % learning rate for adagrad should be higher
 optimOpt.Method = 'sgd';
 % setup learning rates Etc
-eI.miniBatchSize = 512;
+eI.miniBatchSize = 256;
 eI.sgdLearningRate = 1e-1;
 
 %% setup gpu

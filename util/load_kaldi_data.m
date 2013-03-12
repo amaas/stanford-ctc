@@ -1,11 +1,9 @@
-function [feats, utt_dat, alis] = load_kaldi_data(data_dir, file_num)
+function [feats, utt_dat, alis] = load_kaldi_data(data_dir, file_num, ...
+                                                  featDim)
 %% Returns feats and alis matrix and vector with feature and alignment data
 % Input:
 % data_dir is subdirectory with written feats binary file and ali and key txt files
 %    e.g. /afs/cs.stanford.edu/u/awni/luster_awni/kaldi-trunk/egs/swbd/s5/exp/nn_data/
-
-%%TODO set feat dim from eI
-featDim = 300;
 
 featsf = sprintf([data_dir 'feats%d.bin'],file_num);
 alisf = sprintf([data_dir 'alis%d.txt'],file_num);

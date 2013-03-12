@@ -35,7 +35,7 @@ for t = startT : eI.numEpoch
 
     for fn = 1 : eI.numFiles
         %load chunk of data
-        [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn));
+        [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn),eI.inputDim);
         assert(size(feat,1) == size(label_ind,1));
         numExamples = size(label_ind,1);
 
@@ -44,11 +44,11 @@ for t = startT : eI.numEpoch
         feat = feat(rp,:);
         label_ind = label_ind(rp);
         %% HACK randomly dropping some examples from the chunk
-        keep = rand(size(feat,1),1) < 0.5;
-        feat = feat(keep,:);
-        label_ind = label_ind(keep);
-        disp(size(feat));
-        numExamples = size(label_ind,1);
+        %keep = rand(size(feat,1),1) < 0.02;
+        %feat = feat(keep,:);
+        %label_ind = label_ind(keep);
+        %disp(size(feat));
+        %numExamples = size(label_ind,1);
 
         %% run optimizer
         % TODO split optimizer to separate function if necessary
@@ -77,7 +77,7 @@ for t = startT : eI.numEpoch
         %% cache - save after seeing every utterance in each file
         % every eI.numFiles saves will be a full pass over all the data
         % fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
-        fullFilename = sprintf([eI.outputDir 'spNet_e%d.mat'], t);
+        fullFilename = sprintf([eI.outputDir 'spNet_%d.mat'], t);
         save(fullFilename, 'eI','theta','stack','ceValHist','wValHist','accHist');
     end;
         % optimOpt.Method = 'adagrad';
