@@ -14,10 +14,7 @@ keysf = sprintf([data_dir 'keys%d.txt'],file_num);
 if ~exist(featsf,'file')
     fprintf('Feature file %s does not exists\n',featsf);
     return;
-elseif ~exist(keysf,'file')
-    fprintf('Keys file %s does not exists\n',keysf);
-    return;
-end
+end;
 
 %Load features from binary file
 fid = fopen(featsf);
@@ -30,11 +27,17 @@ if exist(alisf,'file')
     alis = alis+1; 
 else
     alis = []; %no alignments loaded i.e. testing
-end
+end;
 
 %Load key strings from txt file
 utt_dat = {};
-[utt_dat.keys utt_dat.sizes]= textread(keysf,'%s %d');
+
+if exist(keysf,'file')
+    [utt_dat.keys utt_dat.sizes]= textread(keysf,'%s %d');
+else
+    utt_dat.keys=[];
+    utt_dat.sizes=[];
+end;
 
 %numSamples = sum(utt_dat.sizes);
 %featdim = size(feats,1)/numSamples;
