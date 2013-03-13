@@ -14,13 +14,13 @@ eI = [];
 eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
-eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
-eI.lambda = 1e-7;
-eI.activationFn = 'tanh';
-eI.numFiles = 8; %number of files data is split into
-eI.outputDir = '4hidden_1024_shuff/';
+eI.layerSizes = [4096, 2048, eI.outputDim];
+eI.lambda = 0;
+eI.activationFn = 'relu';
+eI.numFiles = 15; %number of files data is split into
+eI.outputDir = 'tmp/master_lr_1e-2_4096_2048_512_relu/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_shuff_big/'];
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_fmllr/'];
 
 
 if ~exist(eI.outputDir,'dir')
@@ -29,13 +29,15 @@ end
 
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
-eI.numEpoch = 10;
+eI.numEpoch = 500;
 % 'adagrad' and 'sgd' are valid options here
 % learning rate for adagrad should be higher
 optimOpt.Method = 'sgd';
 % setup learning rates Etc
 eI.miniBatchSize = 512;
-eI.sgdLearningRate = 1e-1;
+eI.sgdLearningRate = 1e-2;
+eI.momentum = 0.5;
+eI.momentumIncrease = 2e4;
 
 %% setup gpu
 if eI.useGpu

@@ -25,7 +25,9 @@ ceValHist = [];
 wValHist = [];
 accHist = [];
 %load tmp/debug_theta.mat;
+% setup momentum
 grad_sum = zeros(size(theta));
+iter = uint64(0);
 for t = startT : eI.numEpoch
     %Make random permutation of file to load for each epoch
     fileList = randperm(eI.numFiles);
@@ -65,6 +67,12 @@ for t = startT : eI.numEpoch
             ceValHist = [ceValHist; ceCost];
             wValHist = [wValHist; wCost];
             accHist = [accHist; nc/ne];
+            iter = iter + 1;
+            % change momentum after set number of iterations
+            if iter > eI.momentumIncrease
+                eI.momentum = 0.9;
+            end;
+                
         end;
         toc;
         %figure(1);plot(theta,'kx'); 
@@ -75,9 +83,8 @@ for t = startT : eI.numEpoch
         % every eI.numFiles saves will be a full pass over all the data
         % fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
         fullFilename = sprintf([eI.outputDir 'spNet_e%d.mat'], t);
-        save(fullFilename, 'eI','theta', 'ceValHist','wValHist','accHist');
+        save(fullFilename, 'eI','theta', 'iter', 'ceValHist','wValHist','accHist');
     end;
         % optimOpt.Method = 'adagrad';
-        eI.momentum = 0.9;
 end;
 
