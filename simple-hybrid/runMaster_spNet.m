@@ -16,11 +16,6 @@ startT = 0;
 
 %% Setup data loading
 dat_dir =eI.datDir;
-% ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-         %'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_big/'];
-%dat_dir = 'tmp/';
-% HACK loading tiny data instead
-%load tmp/micro_feat.mat;
 
 %% loop ower mini-batch epochs
 % storing the mb data in globals
@@ -29,6 +24,8 @@ dat_dir =eI.datDir;
 ceValHist = [];
 wValHist = [];
 accHist = [];
+%load tmp/debug_theta.mat;
+grad_sum = zeros(size(theta));
 for t = startT : eI.numEpoch
     %Make random permutation of file to load for each epoch
     fileList = randperm(eI.numFiles);
@@ -36,6 +33,8 @@ for t = startT : eI.numEpoch
     for fn = 1 : eI.numFiles
         %load chunk of data
         [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn));
+        %load tmp/micro_feat.mat;
+        %label_ind = label_ind + 1;
         assert(size(feat,1) == size(label_ind,1));
         numExamples = size(label_ind,1);
 
@@ -43,12 +42,6 @@ for t = startT : eI.numEpoch
         rp = randperm(numExamples);
         feat = feat(rp,:);
         label_ind = label_ind(rp);
-        %% HACK randomly dropping some examples from the chunk
-        keep = rand(size(feat,1),1) < 0.5;
-        feat = feat(keep,:);
-        label_ind = label_ind(keep);
-        disp(size(feat));
-        numExamples = size(label_ind,1);
 
         %% run optimizer
         % TODO split optimizer to separate function if necessary
@@ -66,20 +59,25 @@ for t = startT : eI.numEpoch
                 theta = theta - (eI.sgdLearningRate*g) ./ sqrt(sumsqgrad);
             else
                 % SGD
-                theta = theta - (eI.sgdLearningRate * g);
-            end;
+                grad_sum = eI.momentum * grad_sum + g;
+                theta = theta - (eI.sgdLearningRate * grad_sum);
+            end;            
             ceValHist = [ceValHist; ceCost];
             wValHist = [wValHist; wCost];
             accHist = [accHist; nc/ne];
         end;
         toc;
-
+        %figure(1);plot(theta,'kx'); 
+        %         figure(2);
+        %         xInd = eI.miniBatchSize .* (1:numel(accHist)); plot(xInd, ceValHist,'kx'); hold on; plot(xInd, wValHist,'rx'); plot(xInd, accHist,'bx'); title(eI.outputDir); hold off;
+        %         drawnow;
         %% cache - save after seeing every utterance in each file
         % every eI.numFiles saves will be a full pass over all the data
         % fullFilename = sprintf([eI.outputDir 'spNet_e%d_f%d.mat'], t,fn);
         fullFilename = sprintf([eI.outputDir 'spNet_e%d.mat'], t);
-        save(fullFilename, 'eI','theta','stack','ceValHist','wValHist','accHist');
+        save(fullFilename, 'eI','theta', 'ceValHist','wValHist','accHist');
     end;
         % optimOpt.Method = 'adagrad';
+        eI.momentum = 0.9;
 end;
 
