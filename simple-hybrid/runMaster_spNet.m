@@ -34,9 +34,8 @@ for t = startT : eI.numEpoch
 
     for fn = 1 : eI.numFiles
         %load chunk of data
-        [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn));
-        %load tmp/micro_feat.mat;
-        %label_ind = label_ind + 1;
+        [feat, utt_dat, label_ind] = load_kaldi_data(dat_dir,fileList(fn),eI.inputDim);
+
         assert(size(feat,1) == size(label_ind,1));
         numExamples = size(label_ind,1);
 

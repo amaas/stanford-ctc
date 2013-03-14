@@ -34,7 +34,7 @@ eI.numEpoch = 500;
 % learning rate for adagrad should be higher
 optimOpt.Method = 'sgd';
 % setup learning rates Etc
-eI.miniBatchSize = 512;
+eI.miniBatchSize = 256;
 eI.sgdLearningRate = 1e-2;
 eI.momentum = 0.5;
 eI.momentumIncrease = 2e4;
