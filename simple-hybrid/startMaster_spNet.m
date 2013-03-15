@@ -35,7 +35,9 @@ eI.numEpoch = 100;
 optimOpt.Method = 'sgd';
 % setup learning rates Etc
 eI.miniBatchSize = 256;
-eI.sgdLearningRate = 1e-1;
+eI.sgdLearningRate = 1e-2;
+eI.momentum = 0.5;
+eI.momentumIncrease = 2e4;
 
 %% setup gpu
 if eI.useGpu

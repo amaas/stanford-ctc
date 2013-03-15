@@ -65,7 +65,7 @@ end;
 numCorrect = double(sum(pred'==labels));
 
 %% compute cost
-cost = (-1/m) * sum(sum(log(pred_prob) .* (groundTruth)));
+cost = (-1/m) * nansum(nansum(log(pred_prob) .* (groundTruth)));
 
 %% compute gradient for SM layer
 delta =  pred_prob-groundTruth;
