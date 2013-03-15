@@ -15,10 +15,10 @@ eI.useGpu = 1;
 eI.inputDim = 300;
 eI.outputDim = 3034;
 eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
-eI.lambda = 1e-7;
+eI.lambda = 0;
 eI.activationFn = 'relu';
-eI.numFiles = 16; %number of files data is split into
-eI.outputDir = '4hidden_1024_relu/';
+eI.numFiles = 1; %number of files data is split into
+eI.outputDir = '4hidden_1024_1filenomomentum/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
 'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_fmllr/'];
 
@@ -29,7 +29,7 @@ end
 
 %% initialize optimization (mini-batch) parameters
 optimOpt = [];
-eI.numEpoch = 10;
+eI.numEpoch = 100;
 % 'adagrad' and 'sgd' are valid options here
 % learning rate for adagrad should be higher
 optimOpt.Method = 'sgd';
