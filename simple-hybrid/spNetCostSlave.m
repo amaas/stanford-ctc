@@ -36,14 +36,17 @@ for i = 1 : numHidden
         hAct{i} = 1./(1+exp(-hAct{i}));
     elseif strcmpi(eI.activationFn,'relu')
         hAct{i} = max(hAct{i}, 0.01 .* hAct{i});
+    elseif strcmpi(eI.activationFn,'relu-hard')
+        hAct{i} = max(hAct{i}, 0.0);
     else
-        delta('unrecognized activation function: %s',eI.activationFn);
+        fprintf(1,'unrecognized activation function: %s',eI.activationFn);
     end;
 end
 %% softmax layer
-pred_prob = exp(bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b));
+pred_prob = bsxfun(@plus, stack{end}.W * hAct{end-1}, stack{end}.b);
+pred_prob = bsxfun(@minus, pred_prob, max(pred_prob));
+pred_prob = exp(pred_prob);
 pred_prob = bsxfun(@rdivide,pred_prob,sum(pred_prob));
-
 %% return here if only predictions desired. 
 if po
   cost = -1; ceCost = -1; wCost = -1; numCorrect = -1;
@@ -83,8 +86,11 @@ for i = numHidden:-1:1
     elseif strcmpi(eI.activationFn,'relu')
         % derivative only changes for places where hAct < 0
         delta(hAct{i} < 0) = 0.01 .* delta(hAct{i} < 0);
+    elseif strcmpi(eI.activationFn,'relu-hard')
+        % derivative only changes for places where hAct < 0
+        delta(hAct{i} <= 0) = 0.0;
     else
-        delta('unrecognized activation function: %s',eI.activationFn);
+        fprintf(1,'unrecognized activation function: %s',eI.activationFn);
     end;    
     % gradient for weight matrix
     if i > 1
@@ -121,10 +127,10 @@ wCost = wCost * eI.lambda;
 ceCost = cost;
 cost = cost + wCost;
 %% return from gpu. should be no-op on CPU
-grad = double(grad);
-cost = double(cost);
-ceCost = double(ceCost);
-wCost = double(wCost);
+grad = full(double(grad));
+cost = full(double(cost));
+ceCost = full(double(ceCost));
+wCost = full(double(wCost));
 numExamples = m;
 end
 
