@@ -35,7 +35,9 @@ for fn=1:num_files
     assert(size(feats,1)==sum(utt_dat.sizes));
 
     %Load priors from ali_train_pdf.counts
-    prior_file = 'kaldi-trunk/egs/swbd/s5/exp/tri4a_dnn/ali_train_pdf.counts';
+    prior_file = ['/afs/cs.stanford.edu/u/awni/luster_awni/kaldi-' ...
+                  'stanford/kaldi-trunk/egs/swbd/s5/exp/' ...
+                  'nn_data_full_fmllr/ali_train_pdf.counts'];
     priors = load([kal_root prior_file]);
 
     %Take log of inverse priors and scale
