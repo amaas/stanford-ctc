@@ -35,8 +35,7 @@ for fn=1:num_files
     assert(size(feats,1)==sum(utt_dat.sizes));
 
     %Load priors from ali_train_pdf.counts
-    prior_file = ['/afs/cs.stanford.edu/u/awni/luster_awni/kaldi-' ...
-                  'stanford/kaldi-trunk/egs/swbd/s5/exp/' ...
+    prior_file = ['kaldi-trunk/egs/swbd/s5/exp/' ...
                   'nn_data_full_fmllr/ali_train_pdf.counts'];
     priors = load([kal_root prior_file]);
 
@@ -86,8 +85,10 @@ for fn=1:num_files
         %output(sub2ind(size(output),(1:size(input,1))',inputalis))=.999;
         
         % Random setup for unit testing
-        %randn('seed',0);
-        %output = randn(size(input,1),size(priors,2)); %filler data
+        %rand('seed',0);
+        %output = rand(size(input,1),size(priors,2)); %filler data
+        %bsxfun(@rdivide,output,sum(output,2)); %normalize
+        %output=output';
         %%%%%%%%%%%%%
 
         %Forward prop data in cost function
