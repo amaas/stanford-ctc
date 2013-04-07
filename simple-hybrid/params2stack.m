@@ -39,8 +39,8 @@ for d = 1:depth
     
     % move to gpu
     if eI.useGpu
-        stack{d}.b = gdouble(stack{d}.b);
-        stack{d}.W = gdouble(stack{d}.W);
+        stack{d}.b = gsingle(stack{d}.b);
+        stack{d}.W = gsingle(stack{d}.W);
     end;
 end
 

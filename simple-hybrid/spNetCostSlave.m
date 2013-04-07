@@ -17,7 +17,7 @@ hAct = cell(numHidden+1, 1);
 gradStack = cell(numHidden+1, 1);
 %% setup GPU vars
 if (eI.useGpu)
-    data = gdouble(data);
+    data = gsingle(data);
 end;
 %% forward prop
 % logistic layers
@@ -52,6 +52,9 @@ if po
   cost = -1; ceCost = -1; wCost = -1; numCorrect = -1;
   grad = [];
   numExamples = size(data,2);
+  % % HACK return hidden activations instead of output
+  % pred_prob = hAct{end-1};
+  
   return;
 end;
 
@@ -59,7 +62,7 @@ end;
 [n,m] = size(data);
 groundTruth = sparse(labels, 1:m, 1,eI.layerSizes(end),m);
 if eI.useGpu
-    groundTruth = gdouble(full(groundTruth));
+    groundTruth = gsingle(full(groundTruth));
 end;
 %% compute accuracy
 [~,pred] = max(pred_prob);
