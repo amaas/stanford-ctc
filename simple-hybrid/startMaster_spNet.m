@@ -12,15 +12,18 @@ addpath ../util;
 %% experiment parameters
 eI = [];
 eI.useGpu = 1;
-eI.inputDim = 300;
+eI.inputDim = 360;
+%eI.inputDim =300;
 eI.outputDim = 3034;
-eI.layerSizes = [1024, 1024, 1024, 1024, eI.outputDim];
+%eI.outputDim = 7711;
+eI.layerSizes = [2048, 2048, 2048, 2048, eI.outputDim];
 eI.lambda = 0;
 eI.activationFn = 'relu';
-eI.numFiles = 1; %number of files data is split into
-eI.outputDir = '4hidden_1024_1filenomomentum/';
+eI.numFiles = 32; %number of files data is split into
+eI.outputDir = '4hidden_2048_relu_fbank_ws15/';
 eI.datDir = ['/scail/group/deeplearning/speech/awni/kaldi-stanford/',...
-'kaldi-trunk/egs/swbd/s5/exp/nn_data_100k_fmllr/'];
+'kaldi-trunk/egs/swbd/s5/exp/nn_data_fbank_train_nn_ws15/'];
+
 
 
 if ~exist(eI.outputDir,'dir')
@@ -37,7 +40,7 @@ optimOpt.Method = 'sgd';
 eI.miniBatchSize = 256;
 eI.sgdLearningRate = 1e-2;
 eI.momentum = 0.5;
-eI.momentumIncrease = 2e4;
+eI.momentumIncrease = 4e4;
 
 %% setup gpu
 if eI.useGpu

@@ -13,6 +13,9 @@ function [] = write_likelihoods(kal_root,dat_in,dat_out,num_files,nn_model)
 % dat_out  :  where the binary likelihoods will be dumped
 % nn_model :  info needed to call forward propagate (code not yet written)
 
+
+%%Setup
+
 %add path to forward prop code
 addpath ../simple-hybrid;
 
@@ -22,42 +25,44 @@ eI.useGpu = 0; %don't use the gpu as likely too much memory
 
 disp(eI);
 
+
+%Load priors from ali_train_pdf.counts
+prior_file = ['kaldi-trunk/egs/swbd/s5/exp/' ...
+              'nn_data_fbank_train_nn/ali_train_pdf.counts'];
+priors = load([kal_root prior_file]);
+
+%Take log of inverse priors and scale
+prior_scale = 1;  %Use to change weight of NN vs Priors
+priors = -prior_scale*log(priors./sum(priors));
+
+%Replace any inf values with max prior value
+priors(find(priors==inf)) = -inf;
+maxp = max(priors);
+priors(find(priors==-inf)) = maxp;
+
+numStates = size(priors,2); %Number of HMM states
+
+%File where log likelihoods are written
+ll_format = [dat_out 'loglikelihoods_%d.ark'];
+
+%%Forward prop and write likelihoods to output
 %loop over all files in data dir
 for fn=1:num_files
 
-    %%Setup
-    %File where log likelihoods are written
-    ll_format = [dat_out 'loglikelihoods_%d.ark'];
     ll_out = sprintf(ll_format,fn);
 
     %Load features and data (keys and utt sizes)
     [feats utt_dat] = load_kaldi_data(dat_in,fn,eI.inputDim);
     assert(size(feats,1)==sum(utt_dat.sizes));
-
-    %Load priors from ali_train_pdf.counts
-    prior_file = ['kaldi-trunk/egs/swbd/s5/exp/' ...
-                  'nn_data_full_fmllr/ali_train_pdf.counts'];
-    priors = load([kal_root prior_file]);
-
-    %Take log of inverse priors and scale
-    prior_scale = 1;  %Use to change weight of NN vs Priors
-    priors = -prior_scale*log(priors./sum(priors));
-
-    %Replace any inf values with max prior value
-    priors(find(priors==inf)) = -inf;
-    maxp = max(priors);
-    priors(find(priors==-inf)) = maxp;
-
-    numStates = size(priors,2); %Number of HMM states
     numUtts = length(utt_dat.keys); %Number of utterances
 
-    %%Forward prop and write likelihoods to output
+
   
     %open log likelihood file to write
     fid = fopen(ll_out,'w');
 
     chunkSize = 100; %Size of utterance chunks to forward prop at a time
-    numChunks = ceil(numUtts/100);
+    numChunks = ceil(numUtts/chunkSize);
     numFramesDone = 0; %Number of total frames written
     numUttsDone = 0; %Number of utterances written
 

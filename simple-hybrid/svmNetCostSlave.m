@@ -1,4 +1,5 @@
-function [ cost, grad, numCorrect, numExamples, ceCost, wCost, pred_prob] = spNetCostSlave( theta, eI, data, labels, pred_only)
+function [ cost, grad, numCorrect, numExamples, ceCost, wCost, ...
+           pred_prob, marg_errs] = svmNetCostSlave( theta, eI, data, labels, pred_only)
 %SPNETCOSTSLAVE Slave cost function for simple phone net
 %   Does all the work of cost / gradient computation
 %   Returns cost broken into cross-entropy, weight norm, and prox reg
@@ -57,26 +58,27 @@ end;
 
 %% get labels as matrix
 [n,m] = size(data);
-% groundTruth = sparse(labels, 1:m, 1,eI.layerSizes(end),m);
-% if eI.useGpu
-%     groundTruth = gsingle(full(groundTruth));
-% end;
+
 %% compute accuracy
 [~,pred] = max(pred_prob);
-% accList = [accList; mean(pred'==curLabels)];
-% numExList = [numExList; m];
 numCorrect = double(sum(pred'==labels));
+
 
 %% compute cost
 Y = bsxfun(@(y,ypos) 2*(y==ypos)-1, labels', (1:eI.outputDim)');
 margin = max(0, 1 - Y .* pred_prob);
-cost = (0.5/m * sum(stack{end}.W(:).^2)) + eI.C * sum(mean(margin.^2, 2));
-delta = - 2*eI.C/m * (margin .* Y);
+
+marg_errs = double(sum(sum(margin>0)));
+%cost = (0.5/m * sum(stack{end}.W(:).^2)) + eI.C * sum(mean(margin.^2, 2));
+cost = eI.r*(0.5/m * sum(stack{end}.W(:).^2)) + sum(mean(margin.^2,2));
+%cost = eI.r*(0.5/m * sum(stack{end}.W(:).^2)) + sum(mean(margin, 2));
+%delta = - 2*eI.C/m * (margin .* Y);
+delta = - 2/m * (margin .* Y);
 
 %% compute gradient for SVM layer
-gradStack{end}.W = delta*hAct{end-1}' + 1/m * stack{end}.W;
+gradStack{end}.W = delta*hAct{end-1}' + (eI.r/m) * stack{end}.W;
 gradStack{end}.b = sum(delta, 2);
-% prop error through SM layer
+% prop error through SVM layer
 delta = stack{end}.W'*delta * m;
 %% gradient for hidden layers
 for i = numHidden:-1:1
