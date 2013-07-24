@@ -11,7 +11,7 @@ function [] = write_likelihoods(kal_root,dat_in,dat_out,num_files,nn_model)
 % kal_root :  root of Kaldi source
 % dat_in   :  directory where data to forward prop resides
 % dat_out  :  where the binary likelihoods will be dumped
-% nn_model :  info needed to call forward propagate (code not yet written)
+% nn_model :  info needed to call forward propagate
 
 
 %%Setup
@@ -141,7 +141,7 @@ for fn=1:num_files
     end
     
     fprintf('%d of %d files written\n',fn,num_files);
-
+    fprintf('%d utterances written\n',numUttsDone);
     %close log likelihood file
     fclose(fid);
 end
