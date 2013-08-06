@@ -28,7 +28,7 @@ disp(eI);
 
 %Load priors from ali_train_pdf.counts
 prior_file = ['kaldi-trunk/egs/swbd/s5/exp/' ...
-              'nn_data_fbank_train_nn/ali_train_pdf.counts'];
+              'nn_data_fmllr_train_nn/ali_train_pdf.counts'];
 priors = load([kal_root prior_file]);
 
 %Take log of inverse priors and scale
@@ -43,7 +43,7 @@ priors(find(priors==-inf)) = maxp;
 numStates = size(priors,2); %Number of HMM states
 
 %File where log likelihoods are written
-ll_format = [dat_out 'loglikelihoods_%d.ark'];
+ll_format = [dat_out 'loglikelihoods__%d.ark'];
 
 %%Forward prop and write likelihoods to output
 %loop over all files in data dir
