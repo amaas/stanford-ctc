@@ -43,7 +43,7 @@ priors(find(priors==-inf)) = maxp;
 numStates = size(priors,2); %Number of HMM states
 
 %File where log likelihoods are written
-ll_format = [dat_out 'loglikelihoods__%d.ark'];
+ll_format = [dat_out 'loglikelihoods_%d.ark'];
 
 %%Forward prop and write likelihoods to output
 %loop over all files in data dir
