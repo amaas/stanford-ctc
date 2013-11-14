@@ -2,6 +2,29 @@
 import gnumpy as gp
 import numpy as np
 
+def relu_hard(x):
+    f = (1/2.)*(x+gp.sign(x)*x)
+    g = gp.sign(f)
+    return f,g
+
+def relu(x):
+    negslope = .01
+    a = (1+negslope)/2.; b = (1-negslope)/2.
+    f = a*x + b*gp.sign(x)*x
+    g = a + b*gp.sign(x)
+    return f,g
+
+def soft_relu(x):
+    absv = gp.sqrt(x ** 2 + 1e-4)
+    f = (1/2.)*(x+absv)
+    g = (1/2.)*(1+x/absv)
+    return f,g
+
+def sigmoid(x):
+    f = gp.logistic(x)
+    g = f * (1-f)
+    return f,g
+
 class NNet:
 
     def __init__(self,inputDim,outputDim,layerSizes,mbSize=256,train=True,activation='relu'):
@@ -10,7 +33,13 @@ class NNet:
         self.layerSizes = layerSizes
         self.stack = None
         self.train = train
-        self.activation = activation
+        self.funcdict = {
+            "relu_hard" : relu_hard,
+            "relu"      : relu,
+            "soft_relu" : soft_relu,
+            "sigmoid"   : sigmoid
+        }
+        self.activation = self.funcdict[activation]
         self.mbSize = mbSize
 
     def initParams(self):
@@ -32,10 +61,10 @@ class NNet:
         for w,b in self.stack:
             self.hActs[i] = w.dot(self.hActs[i-1])+b
             if i <= len(self.layerSizes):
-                self.hActs[i] = (1/2.)*(self.hActs[i]+gp.sign(self.hActs[i])*self.hActs[i])
+                self.hActs[i],_ = self.activation(self.hActs[i])
             i += 1
 
-        probs = self.hActs[-1]+gp.min(self.hActs[-1],axis=0)
+        probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
         probs = gp.exp(probs)
         probs = probs/gp.sum(probs,axis=0)
 
@@ -51,9 +80,10 @@ class NNet:
         self.deltas[-1] = probs-labelMat
         i = len(self.layerSizes)-1
         for w,b in reversed(self.stack[1:]):
-            self.deltas[i] = w.T.dot(self.deltas[i+1])*gp.sign(self.hActs[i+1])
+            _,grad = self.activation(self.hActs[i+1])
+            self.deltas[i] = w.T.dot(self.deltas[i+1])*grad
             i -= 1
-        
+
         # compute gradients
         for i in range(len(self.grad)):
             self.grad[i][0] = (1./self.mbSize)*self.deltas[i].dot(self.hActs[i].T)
@@ -62,9 +92,32 @@ class NNet:
         return cost,self.grad
 
     def updateParams(self,scale,update):
-
         self.stack = [[ws[0]+scale*wsDelta[0],ws[1]+scale*wsDelta[1]] 
                         for ws,wsDelta in zip(self.stack,update)]
+
+    def vecToStack(self,vec):
+        start = 0
+        sizes = [self.inputDim]+self.layerSizes+[self.outputDim]
+        for n,m,i in zip(sizes[:-1],sizes[1:],range(len(sizes)-1)):
+            self.stack[i] = [gp.garray(np.reshape(np.array(vec[start:start+m*n]),(m,n))),\
+                gp.garray(np.reshape(np.array(vec[start+m*n:start+m*(n+1)]),(m,1)))]
+            start += m*(n+1)
+    
+    def vectorize(self, x):
+        return [v for layer in x for wb in layer for w_or_b in wb for v in w_or_b]
+
+    def paramVec(self):
+        return self.vectorize(self.stack)
+
+    def costAndGradVec(self,params,data,labels):
+        """
+        Vectorized version of costAndGrad
+        """
+        self.vecToStack(params)
+        cost,grad = self.costAndGrad(data,labels)
+        if (grad != None):
+            vecgrad = self.vectorize(grad)
+        return cost,vecgrad
 
 if __name__=='__main__':
     inputDim = 5
