@@ -13,9 +13,8 @@ def gradcheck(model, times=None, *args):
     """
     param = model.paramVec()
     if (times == None or times > len(param)): times = len(param)
-    # ind = sample(xrange(len(param)), times)
-    ind = range(times)
-    epsilon = 1e-6
+    ind = sample(xrange(len(param)), times)
+    epsilon = 1e-4
 
     print "Iter\tIndex\tNumGrad\t\tGrad\t\tDiff"
 
@@ -38,9 +37,9 @@ def gradcheck(model, times=None, *args):
 
         print "%d\t%d\t%1.5e\t%1.5e\t%1.5e" % (time+1,index,numgrad,grad,diff)
 
-        # if (diff > 1e-4):
-        #     print ("GradCheck failed, returning early. Check the last line of output for details.")
-        #     return
+        if (diff > 1e-4):
+            print ("GradCheck failed, returning early. Check the last line of output for details.")
+            return
 
 class gradcheckCheck:
     def __init__(self, param):
