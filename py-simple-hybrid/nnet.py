@@ -2,26 +2,34 @@
 import gnumpy as gp
 import numpy as np
 
-def relu_hard(x):
+def relu_hard(x, computeGrad = False):
     f = (1/2.)*(x+gp.sign(x)*x)
+    if (not computeGrad): return f
+
     g = gp.sign(f)
     return f,g
 
-def relu(x):
+def relu(x, computeGrad = False):
     negslope = .01
     a = (1+negslope)/2.; b = (1-negslope)/2.
     f = a*x + b*gp.sign(x)*x
+    if (not computeGrad): return f
+
     g = a + b*gp.sign(x)
     return f,g
 
-def soft_relu(x):
+def soft_relu(x, computeGrad = False):
     absv = gp.sqrt(x ** 2 + 1e-4)
     f = (1/2.)*(x+absv)
+    if (not computeGrad): return f
+
     g = (1/2.)*(1+x/absv)
     return f,g
 
-def sigmoid(x):
+def sigmoid(x, computeGrad = False):
     f = gp.logistic(x)
+    if (not computeGrad): return f
+
     g = f * (1-f)
     return f,g
 
@@ -61,7 +69,7 @@ class NNet:
         for w,b in self.stack:
             self.hActs[i] = w.dot(self.hActs[i-1])+b
             if i <= len(self.layerSizes):
-                self.hActs[i],_ = self.activation(self.hActs[i])
+                self.hActs[i] = self.activation(self.hActs[i])
             i += 1
 
         probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
@@ -80,7 +88,7 @@ class NNet:
         self.deltas[-1] = probs-labelMat
         i = len(self.layerSizes)-1
         for w,b in reversed(self.stack[1:]):
-            _,grad = self.activation(self.hActs[i+1])
+            _,grad = self.activation(self.hActs[i+1], True)
             self.deltas[i] = w.T.dot(self.deltas[i+1])*grad
             i -= 1
 

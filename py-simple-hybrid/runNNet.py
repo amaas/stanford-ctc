@@ -22,7 +22,7 @@ def run():
     SGD = sgd.SGD(nn,alpha=stepSize,minibatch=minibatch)
 
     for _ in range(epochs):
-        for i in np.random.permutation(numFiles):
+        for i in np.random.permutation(numFiles)+1:
             data,labels,_,_=loader.loadDataFile(i)
             SGD.run(data,labels)
 
