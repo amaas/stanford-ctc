@@ -3,35 +3,30 @@ import gnumpy as gp
 import numpy as np
 
 def relu_hard(x, computeGrad = False):
-    f = (1/2.)*(x+gp.sign(x)*x)
-    if (not computeGrad): return f
+    if (not computeGrad): 
+        f = (1/2.)*(x+gp.sign(x)*x)
+        return f
 
-    g = gp.sign(f)
-    return f,g
+    g = gp.sign(x)
+    return g
 
 def relu(x, computeGrad = False):
     negslope = .01
     a = (1+negslope)/2.; b = (1-negslope)/2.
-    f = a*x + b*gp.sign(x)*x
-    if (not computeGrad): return f
+    if (not computeGrad): 
+        f = a*x + b*gp.sign(x)*x
+        return f
 
     g = a + b*gp.sign(x)
-    return f,g
-
-def soft_relu(x, computeGrad = False):
-    absv = gp.sqrt(x ** 2 + 1e-4)
-    f = (1/2.)*(x+absv)
-    if (not computeGrad): return f
-
-    g = (1/2.)*(1+x/absv)
-    return f,g
+    return g
 
 def sigmoid(x, computeGrad = False):
-    f = gp.logistic(x)
-    if (not computeGrad): return f
+    if (not computeGrad): 
+        f = gp.logistic(x)
+        return f
 
-    g = f * (1.-f)
-    return f,g
+    g = x * (1.-x)
+    return g
 
 class NNet:
 
@@ -44,7 +39,6 @@ class NNet:
         self.funcdict = {
             "relu_hard" : relu_hard,
             "relu"      : relu,
-            "soft_relu" : soft_relu,
             "sigmoid"   : sigmoid,
         }
         self.activation = self.funcdict[activation]
@@ -56,7 +50,6 @@ class NNet:
         self.stack = [[gp.rand(m,n)*2*s-s,gp.zeros((m,1))] \
                             for n,m,s in zip(sizes[:-1],sizes[1:],scales)]
         self.hActs = [gp.empty((s,self.mbSize)) for s in sizes]
-        self.hInps = [gp.empty((s,self.mbSize)) for s in sizes]
 
         if self.train:
             self.deltas = [gp.empty((s,self.mbSize)) for s in sizes[1:]]
@@ -68,11 +61,9 @@ class NNet:
         self.hActs[0] = data
         i = 1
         for w,b in self.stack:
-            self.hInps[i] = w.dot(self.hActs[i-1])+b
+            self.hActs[i] = w.dot(self.hActs[i-1])+b
             if i <= len(self.layerSizes):
-                self.hActs[i] = self.activation(self.hInps[i])
-            else:
-                self.hActs[i] = self.hInps[i]
+                self.hActs[i] = self.activation(self.hActs[i])
             i += 1
 
         probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
@@ -91,7 +82,7 @@ class NNet:
         self.deltas[-1] = probs-labelMat
         i = len(self.layerSizes)-1
         for w,b in reversed(self.stack[1:]):
-            _,grad = self.activation(self.hInps[i+1], True)
+            grad = self.activation(self.hActs[i+1], True)
             self.deltas[i] = w.T.dot(self.deltas[i+1])*grad
             i -= 1
 

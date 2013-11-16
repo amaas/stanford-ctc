@@ -67,7 +67,7 @@ if __name__=='__main__':
     labels = [random.randint(0,9)]*mbSize
 
     # make nnet
-    nn = nnet.NNet(inputDim,outputDim,layerSizes,mbSize,train=True,activation='soft_relu')
+    nn = nnet.NNet(inputDim,outputDim,layerSizes,mbSize,train=True)
     nn.initParams()
 
     # run
