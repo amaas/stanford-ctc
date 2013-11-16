@@ -30,7 +30,7 @@ def sigmoid(x, computeGrad = False):
     f = gp.logistic(x)
     if (not computeGrad): return f
 
-    g = f * (1-f)
+    g = f * (1.-f)
     return f,g
 
 class NNet:
@@ -45,7 +45,7 @@ class NNet:
             "relu_hard" : relu_hard,
             "relu"      : relu,
             "soft_relu" : soft_relu,
-            "sigmoid"   : sigmoid
+            "sigmoid"   : sigmoid,
         }
         self.activation = self.funcdict[activation]
         self.mbSize = mbSize
@@ -56,6 +56,7 @@ class NNet:
         self.stack = [[gp.rand(m,n)*2*s-s,gp.zeros((m,1))] \
                             for n,m,s in zip(sizes[:-1],sizes[1:],scales)]
         self.hActs = [gp.empty((s,self.mbSize)) for s in sizes]
+        self.hInps = [gp.empty((s,self.mbSize)) for s in sizes]
 
         if self.train:
             self.deltas = [gp.empty((s,self.mbSize)) for s in sizes[1:]]
@@ -67,9 +68,11 @@ class NNet:
         self.hActs[0] = data
         i = 1
         for w,b in self.stack:
-            self.hActs[i] = w.dot(self.hActs[i-1])+b
+            self.hInps[i] = w.dot(self.hActs[i-1])+b
             if i <= len(self.layerSizes):
-                self.hActs[i] = self.activation(self.hActs[i])
+                self.hActs[i] = self.activation(self.hInps[i])
+            else:
+                self.hActs[i] = self.hInps[i]
             i += 1
 
         probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
@@ -88,7 +91,7 @@ class NNet:
         self.deltas[-1] = probs-labelMat
         i = len(self.layerSizes)-1
         for w,b in reversed(self.stack[1:]):
-            _,grad = self.activation(self.hActs[i+1], True)
+            _,grad = self.activation(self.hInps[i+1], True)
             self.deltas[i] = w.T.dot(self.deltas[i+1])*grad
             i -= 1
 

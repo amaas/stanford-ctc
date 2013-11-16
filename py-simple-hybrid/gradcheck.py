@@ -58,7 +58,7 @@ if __name__=='__main__':
 
     inputDim = 5
     outputDim = 10
-    layerSizes = [4,3]
+    layerSizes = [3,3]
     mbSize = 5
 
     # fake data
@@ -67,7 +67,7 @@ if __name__=='__main__':
     labels = [random.randint(0,9)]*mbSize
 
     # make nnet
-    nn = nnet.NNet(inputDim,outputDim,layerSizes,mbSize,train=True)
+    nn = nnet.NNet(inputDim,outputDim,layerSizes,mbSize,train=True,activation='soft_relu')
     nn.initParams()
 
     # run
