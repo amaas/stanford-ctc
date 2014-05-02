@@ -36,7 +36,7 @@ class DataLoader:
 
 
 if __name__=='__main__':
-    dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/nn_train_fmllr_rand/"
+    dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/fisher_english/s5/exp/nn_train_1/"
     rawSize = 41*40
     inputSize = rawSize
     dl = DataLoader(dataDir,rawSize,inputSize)
