@@ -1,15 +1,17 @@
 
 import numpy as np
 
-def ctc_loss(params, seq, blank=39):
+def ctc_loss(params, seq, blank=39, is_prob = True):
     """
     CTC loss function.
     params - n x m matrix of n-D probability distributions over m frames.
     seq - sequence of phone id's for given example.
+    is_prob - whether params have already passed through a softmax
     Returns objective and gradient.
     """
     # TODO stateify this into object so don't have to redefine this on every
     # call/ create new mem for grads etc
+    #print 'blank sym index', blank
 
     seqLen = seq.shape[0] # Length of label sequence (# phones)
     numphones = params.shape[0] # Number of labels
@@ -21,15 +23,20 @@ def ctc_loss(params, seq, blank=39):
     betas = np.zeros((L,T))
 
     # Normalize params into probabilities
-    params = params - np.max(params,axis=0)
-    params = np.exp(params)
-    params = params / np.sum(params,axis=0)
+    # TODO move this, assume NN outputs probs
+    if not is_prob:
+        params = params - np.max(params,axis=0)
+        params = np.exp(params)
+        params = params / np.sum(params,axis=0)
 
+    #print params
+    #print seq
     # Initialize alphas and forward pass 
     alphas[0,0] = params[blank,0]
     alphas[1,0] = params[seq[0],0]
     c = np.sum(alphas[:,0])
     alphas[:,0] = alphas[:,0] / c
+    #print alphas[:,0]
     llForward = np.log(c)
     for t in xrange(1,T):
 	start = max(0,L-2*(T-t)) 
@@ -50,10 +57,14 @@ def ctc_loss(params, seq, blank=39):
 	    
 	# normalize at current time (prevent underflow)
 	c = np.sum(alphas[:,t])
+        #print alphas[:,t]
 	alphas[:,t] = alphas[:,t] / c
 	llForward += np.log(c)
+        #print alphas[:,t]
+        #print llForward, c
 
     # Initialize betas and backwards pass
+    #print 'starting backward pass'
     betas[-1,-1] = params[blank,-1]
     betas[-2,-1] = params[seq[-1],-1]
     c = np.sum(betas[:,-1])
@@ -79,6 +90,7 @@ def ctc_loss(params, seq, blank=39):
 	c = np.sum(betas[:,t])
 	betas[:,t] = betas[:,t] / c
 	llBackward += np.log(c)
+        #print llBackward
 
     # Compute gradient with respect to unnormalized input parameters
     grad = np.zeros(params.shape)
@@ -108,16 +120,16 @@ def grad_check(epsilon=1e-4):
     seq = seq.astype(np.int32)
 
     params = np.random.randn(numPhones,uttLen) 
-    _,grad = ctc_loss(params,seq)
+    _,grad = ctc_loss(params,seq, is_prob=False)
     numgrad = np.empty(grad.shape)
 
     for i in xrange(params.shape[0]):
 	print i
 	for j in xrange(params.shape[1]):
 	    params[i,j] += epsilon
-	    costP,_ = ctc_loss(params,seq)
+	    costP,_ = ctc_loss(params,seq, is_prob=False)
 	    params[i,j] -= 2*epsilon
-	    costL,_ = ctc_loss(params,seq)
+	    costL,_ = ctc_loss(params,seq,is_prob=False)
 	    params[i,j] += epsilon
 	    numgrad[i,j] = (costP - costL) / (2*epsilon)
 
