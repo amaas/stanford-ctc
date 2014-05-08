@@ -38,7 +38,27 @@ class TimitLoader:
         
         return data.T,alis,keys,sizes
 
+    def loadDataFileDict(self,filenum):
+        """
+        Loads a data file but stores input frames in a dictionary keyed by utterance
+        Each input dictionary entry is a 2-D matrix of length equal to that utterance
+        Other variables returned are the same as the original loader
+        """
+        data_mat, alis, keys, sizes = self.loadDataFile(filenum)
+        data_dict = {}
+        startInd = 0
+        for i in xrange(len(sizes)):
+            k = keys[i]
+            endInd = startInd + sizes[i]
+            data_dict[k] = np.copy(data_mat[:,startInd:endInd])
+            startInd = endInd
 
+        # startInd = all frames means we loaded all data
+        assert startInd, data_mat.shape[1]
+
+        return data_dict, alis, keys, sizes
+
+            
 # Usage example / eyeball test below
 if __name__=='__main__':
     dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/timit/s5/exp/nn_train/"
@@ -52,3 +72,7 @@ if __name__=='__main__':
     print "Number of transcripts: %d"%len(alis.keys())
     print "Number of keys: %d"%len(keys)
     print "Number of frames: %d"%sum(sizes)
+    #print sizes #keys#alis.values()
+
+    #data,alis,keys,sizes =dl.loadDataFileDict(filenum)
+    #print data.keys()
