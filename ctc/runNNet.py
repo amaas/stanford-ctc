@@ -60,7 +60,7 @@ def run(args=None):
 
             SGD.run_seq(data_dict,alis,keys,sizes)
 
-	sgd.alpha = sgd.alpha / opts.anneal
+	SGD.alpha = SGD.alpha / opts.anneal
 	with open(opts.outFile,'w') as fid:
 	    pickle.dump(opts,fid)
 	    pickle.dump(SGD.costt,fid)
