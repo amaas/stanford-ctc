@@ -1,7 +1,8 @@
 
 import numpy as np
+import editDistance as ed
 
-def ctc_loss(params, seq, blank=39, is_prob = True):
+def ctc_loss(params, seq, blank=0, is_prob = True):
     """
     CTC loss function.
     params - n x m matrix of n-D probability distributions over m frames.
@@ -102,6 +103,37 @@ def ctc_loss(params, seq, blank=39, is_prob = True):
 
     return -llForward,grad
 
+def decode_best_path(probs, ref=None, blank=0):
+    """
+    Computes best path given sequence of probability distributions per frame.
+    Simply chooses most likely label at each timestep then collapses result to
+    remove blanks and repeats.
+    Optionally computes edit distance between reference transcription
+    and best path if reference provided.
+    Returns hypothesis transcription and edit distance if requested.
+    """
+
+    # Compute best path
+    best_path = np.argmax(probs,axis=0).tolist()
+    
+    # Collapse phone string
+    hyp = []
+    for i,b in enumerate(best_path):
+	# ignore blanks
+	if b == blank:
+	    continue
+	# ignore repeats
+	elif i != 0 and  b == best_path[i-1]:
+	    continue
+	else:
+	    hyp.append(b)
+
+    # Optionally compute phone error rate to ground truth
+    dist = 0
+    if seq is not None:
+	dist,_,_,_,_ = ed.edit_distance(ref,hyp)
+    
+    return hyp,dist
 
 def grad_check(epsilon=1e-4):
     np.random.seed(33)
