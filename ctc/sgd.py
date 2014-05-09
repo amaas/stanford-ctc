@@ -1,34 +1,23 @@
 import numpy as np
-#import gnumpy as gp
 import pickle
-
-# gp.board_id_to_use = 1
 
 class SGD:
 
-    def __init__(self,model,alpha=1e-2,minibatch=256,
-	         optimizer='momentum',momentum=0.9):
+    def __init__(self,model,alpha=1e-2,optimizer='momentum',momentum=0.9):
         self.model = model
 
         assert self.model is not None, "Must define a function to optimize"
         self.it = 0
         self.momentum = momentum # momentum
         self.alpha = alpha # learning rate
-        self.minibatch = minibatch # minibatch
 	self.optimizer = optimizer
 	if self.optimizer == 'momentum' or self.optimizer == 'nesterov':
 	    print "Using %s.."%self.optimizer
 	    self.velocity = [[np.zeros(w.shape),np.zeros(b.shape)] 
 			      for w,b in self.model.stack]
-	elif self.optimizer == 'adagrad' or self.optimizer == 'adagrad3' or self.optimizer == 'adadelta':
+	elif self.optimizer == 'adagrad' or self.optimizer == 'adadelta':
 	    print "Using %s.."%self.optimizer
 	    self.gradt = [[np.zeros(w.shape),np.zeros(b.shape)] 
-			      for w,b in self.model.stack]
-	elif self.optimizer == 'adaccel2':
-	    print "Using adaccel2.."
-	    self.gradt = [[np.zeros(w.shape),np.zeros(b.shape)] 
-			      for w,b in self.model.stack]
-	    self.velocity = [[np.zeros(w.shape),np.zeros(b.shape)] 
 			      for w,b in self.model.stack]
 	elif self.optimizer == 'sgd':
 	    print "Using sgd.."
@@ -43,8 +32,7 @@ class SGD:
         Runs stochastic gradient descent with model as objective.
         Uses single utterances instead of minibatches
         """
-        #m = data.shape[1]
-        
+
         # momentum setup
         momIncrease = 10
         mom = 0.5
@@ -59,16 +47,16 @@ class SGD:
 
             mb_data = data_dict[k]
             # convert the list of string phone ids to int vector
-            mb_labels = np.array([int(x) for x in alis[k]])
+            mb_labels = np.array(alis[k],dtype=np.int32)
 
-	    if self.optimizer == 'nesterov' or self.optimizer == 'adaccel2':
+	    if self.optimizer == 'nesterov':
 		# w = w+mom*velocity (evaluate gradient at future point)
 		self.model.updateParams(mom,self.velocity)
                 
             cost,grad = self.model.costAndGrad(mb_data,mb_labels)
 
 	    # undo update
-	    if self.optimizer == 'nesterov' or self.optimizer == 'adaccel2':
+	    if self.optimizer == 'nesterov':
 		# w = w-mom*velocity
 		self.model.updateParams(-mom,self.velocity)
 
@@ -97,16 +85,6 @@ class SGD:
 			for gt,g in zip(self.gradt,grad)]
 		scale = -self.alpha
 
-	    elif self.optimizer == 'adagrad3':
-		epsilon = 1e-8
-		# trace = trace+grad.^2
-		self.gradt = [[gt[0]+g[0]*g[0]+epsilon,gt[1]+g[1]*g[1]+epsilon] 
-			for gt,g in zip(self.gradt,grad)]
-		# update = grad.*trace.^(-1/3)
-		update =  [[g[0]*(1./(gt[0]**(1./3))),g[1]*(1./(gt[1]**(1./3)))]
-			for gt,g in zip(self.gradt,grad)]
-		scale = -self.alpha
-
 	    elif self.optimizer == 'nesterov':
 		# velocity = mom*velocity - alpha*grad
 		self.velocity = [[mom*vs[0]-self.alpha*g[0],mom*vs[1]-self.alpha*g[1]]
@@ -126,19 +104,6 @@ class SGD:
 			for gt,g in zip(self.gradt,grad)]
 		scale = -self.alpha
 
-	    elif self.optimizer == 'adaccel2':
-		# velocity = mom*velocity - alpha*grad
-		self.velocity = [[mom*vs[0]-self.alpha*g[0],mom*vs[1]-self.alpha*g[1]]
-				  for vs,g in zip(self.velocity,grad)]
-		# trace = trace+grad.^2
-		self.gradt = [[gt[0]+g[0]*g[0],gt[1]+g[1]*g[1]] 
-			for gt,g in zip(self.gradt,grad)]
-
-		# update = velocity.*trace.^(-1/2)
-		update =  [[v[0]*(1./(gt[0]**(1./2))),v[1]*(1./(gt[1]**(1./2)))]
-			for gt,v in zip(self.gradt,self.velocity)]
-		scale = 1.0
-
 	    elif self.optimizer == 'sgd':
 		update = grad
 		scale = -self.alpha
@@ -148,5 +113,6 @@ class SGD:
 
 	    self.costt.append(cost)
             if self.it%1 == 0:
-		print "Iter %d : Cost=%.4f, ExpCost=%.4f."%(self.it,cost,self.expcost[-1])
+		print "Iter %d : Cost=%.4f, ExpCost=%.4f, SeqLen=%d, NumFrames=%d."%(self.it,
+			cost,self.expcost[-1],mb_labels.shape[0],mb_data.shape[1])
             

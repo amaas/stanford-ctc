@@ -29,17 +29,15 @@ def ctc_loss(params, seq, blank=39, is_prob = True):
         params = np.exp(params)
         params = params / np.sum(params,axis=0)
 
-    #print params
-    #print seq
     # Initialize alphas and forward pass 
     alphas[0,0] = params[blank,0]
     alphas[1,0] = params[seq[0],0]
     c = np.sum(alphas[:,0])
     alphas[:,0] = alphas[:,0] / c
-    #print alphas[:,0]
     llForward = np.log(c)
     for t in xrange(1,T):
 	start = max(0,L-2*(T-t)) 
+	end = min(2*t+2,L)
 	for s in xrange(start,L):
 	    l = (s-1)/2
 	    # blank
@@ -56,21 +54,18 @@ def ctc_loss(params, seq, blank=39, is_prob = True):
 			      * params[seq[l],t]
 	    
 	# normalize at current time (prevent underflow)
-	c = np.sum(alphas[:,t])
-        #print alphas[:,t]
-	alphas[:,t] = alphas[:,t] / c
+	c = np.sum(alphas[start:end,t])
+	alphas[start:end,t] = alphas[start:end,t] / c
 	llForward += np.log(c)
-        #print alphas[:,t]
-        #print llForward, c
 
     # Initialize betas and backwards pass
-    #print 'starting backward pass'
     betas[-1,-1] = params[blank,-1]
     betas[-2,-1] = params[seq[-1],-1]
     c = np.sum(betas[:,-1])
     betas[:,-1] = betas[:,-1] / c
     llBackward = np.log(c)
     for t in xrange(T-2,-1,-1):
+	start = max(0,L-2*(T-t)) 
 	end = min(2*t+2,L)
 	for s in xrange(end-1,-1,-1):
 	    l = (s-1)/2
@@ -87,24 +82,23 @@ def ctc_loss(params, seq, blank=39, is_prob = True):
 		betas[s,t] = (betas[s,t+1] + betas[s+1,t+1] + betas[s+2,t+1]) \
 			     * params[seq[l],t]
 
-	c = np.sum(betas[:,t])
-	betas[:,t] = betas[:,t] / c
+	c = np.sum(betas[start:end,t])
+	betas[start:end,t] = betas[start:end,t] / c
 	llBackward += np.log(c)
-        #print llBackward
 
     # Compute gradient with respect to unnormalized input parameters
     grad = np.zeros(params.shape)
-    abs = alphas*betas
+    ab = alphas*betas
     for s in xrange(L):
 	# blank
 	if s%2 == 0:
-	    grad[blank,:] += abs[s,:]
-	    abs[s,:] = abs[s,:]/params[blank,:]
+	    grad[blank,:] += ab[s,:]
+	    ab[s,:] = ab[s,:]/params[blank,:]
 	else:
-	    grad[seq[(s-1)/2],:] += abs[s,:]
-	    abs[s,:] = abs[s,:]/params[seq[(s-1)/2],:]
+	    grad[seq[(s-1)/2],:] += ab[s,:]
+	    ab[s,:] = ab[s,:]/params[seq[(s-1)/2],:]
 
-    grad = params - grad / (params * np.sum(abs,axis=0))
+    grad = params - grad / (params * np.sum(ab,axis=0))
 
     return -llForward,grad
 

@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import izip
 import os
 
 class TimitLoader:
@@ -47,9 +48,8 @@ class TimitLoader:
         data_mat, alis, keys, sizes = self.loadDataFile(filenum)
         data_dict = {}
         startInd = 0
-        for i in xrange(len(sizes)):
-            k = keys[i]
-            endInd = startInd + sizes[i]
+        for k,s in izip(keys,sizes):
+            endInd = startInd + s
             data_dict[k] = np.copy(data_mat[:,startInd:endInd])
             startInd = endInd
 
@@ -67,7 +67,7 @@ if __name__=='__main__':
     dl = TimitLoader(dataDir,rawSize,inputSize)
     filenum = 1
     
-    data,alis,keys,sizes =dl.loadDataFile(filenum)
+    data,alis,keys,sizes = dl.loadDataFile(filenum)
     print "Data shape (featDim x frames): (%d,%d) "%data.shape
     print "Number of transcripts: %d"%len(alis.keys())
     print "Number of keys: %d"%len(keys)
