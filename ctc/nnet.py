@@ -45,6 +45,7 @@ class NNet:
         }
         self.activation = self.funcdict[activation]
         self.mbSize = mbSize
+	self.hist = {}
 
     def initParams(self):
 	"""
@@ -136,7 +137,7 @@ class NNet:
             vecgrad = self.vectorize(grad)
         return cost,vecgrad
 
-    def costAndGrad(self,data,labels):
+    def costAndGrad(self,data,labels,key=None):
         """
         Forward prop entire utterance
         Call CTC cost function
@@ -168,6 +169,10 @@ class NNet:
         # TODO how much does passing to different function cost us? 
         cost, self.deltas[-1] = ctc.ctc_loss(probs, labels, blank=0, is_prob=True)
 
+	# Store probabilities and error signal for a given key
+	if key is not None and key in self.hist:
+	    self.hist[key].append((probs,self.deltas[-1]))
+
         if not self.train:
             return cost,None
 
@@ -184,6 +189,7 @@ class NNet:
         for i in range(len(self.grad)):
             self.grad[i][0] = np.dot(self.deltas[i], self.hActs[i].T)
             self.grad[i][1] = np.sum(self.deltas[i],axis=1).reshape(-1,1)
+
         return cost,self.grad
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import random
 
 class SGD:
 
@@ -34,16 +35,17 @@ class SGD:
         """
 
         # momentum setup
-        momIncrease = 10
+        momIncrease = 100
         mom = 0.5
 
-        # randomly permute utterance order
-        perm = np.random.permutation(range(len(keys)))
-
-        for i in perm:
-            k = keys[i]
-
+	# Shuffle utterances
+	random.shuffle(keys)
+        for k in keys:
             self.it += 1
+
+	    # Increase momentum
+	    if self.it > momIncrease:
+		mom = self.momentum
 
             mb_data = data_dict[k]
             # convert the list of string phone ids to int vector
@@ -53,7 +55,7 @@ class SGD:
 		# w = w+mom*velocity (evaluate gradient at future point)
 		self.model.updateParams(mom,self.velocity)
                 
-            cost,grad = self.model.costAndGrad(mb_data,mb_labels)
+            cost,grad = self.model.costAndGrad(mb_data,mb_labels,key=k)
 
 	    # undo update
 	    if self.optimizer == 'nesterov':
@@ -67,8 +69,6 @@ class SGD:
 		self.expcost.append(cost)
 
 	    if self.optimizer == 'momentum':
-		if self.it > momIncrease:
-		    mom = self.momentum
 		# velocity = mom*velocity + eta*grad
 		self.velocity = [[mom*vs[0]+self.alpha*g[0],mom*vs[1]+self.alpha*g[1]]
 				  for vs,g in zip(self.velocity,grad)]

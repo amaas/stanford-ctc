@@ -48,15 +48,23 @@ def run(args=None):
     SGD = sgd.SGD(nn,alpha=opts.step,optimizer=opts.optimizer,
 		  momentum=opts.momentum)
 
+    # Setup some random keys for tracing
+    with open('randKeys.txt','r') as fid:
+	traceK = pickle.load(fid)
+    for k in traceK:
+	nn.hist[k] = []
+
     for _ in range(opts.epochs):
         for i in np.random.permutation(opts.numFiles)+1:
             data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
 
             SGD.run_seq(data_dict,alis,keys,sizes)
 
+	sgd.alpha = sgd.alpha / opts.anneal
 	with open(opts.outFile,'w') as fid:
 	    pickle.dump(opts,fid)
 	    pickle.dump(SGD.costt,fid)
+	    pickle.dump(nn.hist,fid)
 
 
 if __name__=='__main__':
