@@ -116,17 +116,6 @@ class NNet:
     def paramVec(self):
         return self.vectorize(self.stack)
 
-    def ceCostAndGradVec(self,params,data,labels):
-        """
-        Vectorized version of costAndGrad
-        """
-        # NOTE prefixed with CE (cross entropy) so that CTC is default cost
-        self.vecToStack(params)
-        cost,grad = self.costAndGrad(data,labels)
-        if (grad != None):
-            vecgrad = self.vectorize(grad)
-        return cost,vecgrad
-
     def costAndGradVec(self,params,data,labels):
         """
         Vectorized version of CTC cost 
@@ -167,6 +156,9 @@ class NNet:
 
         ## pass probs and label string to ctc loss
         # TODO how much does passing to different function cost us? 
+	if not self.train:
+	    return ctc.decode_best_path(probs, ref=labels, blank=0)
+
         cost, self.deltas[-1] = ctc.ctc_loss(probs, labels, blank=0, is_prob=True)
 
 	# Store probabilities and error signal for a given key
@@ -192,6 +184,16 @@ class NNet:
 
         return cost,self.grad
 
+    def toFile(self,fid):
+	"""
+	Saves only the network parameters to the given fd.
+	"""
+	import cPickle as pickle
+	pickle.dump(self.stack,fid)
+
+    def fromFile(self,fid):
+	import cPickle as pickle
+	self.stack = pickle.load(fid)
 
 if __name__=='__main__':
     inputDim = 5

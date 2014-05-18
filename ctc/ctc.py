@@ -130,7 +130,8 @@ def decode_best_path(probs, ref=None, blank=0):
 
     # Optionally compute phone error rate to ground truth
     dist = 0
-    if seq is not None:
+    if ref is not None:
+	ref = ref.tolist()
 	dist,_,_,_,_ = ed.edit_distance(ref,hyp)
     
     return hyp,dist
