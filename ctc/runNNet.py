@@ -35,7 +35,7 @@ def run(args=None):
     parser.add_option("--numFiles",dest="numFiles",type="int",default=19)
     parser.add_option("--inputDim",dest="inputDim",type="int",default=41*23)
     parser.add_option("--rawDim",dest="rawDim",type="int",default=41*23)
-    parser.add_option("--outputDim",dest="outputDim",type="int",default=40)
+    parser.add_option("--outputDim",dest="outputDim",type="int",default=62)
 
     parser.add_option("--outFile",dest="outFile",type="string",
 	    default="models/test.bin")
@@ -58,7 +58,7 @@ def run(args=None):
 		  momentum=opts.momentum)
 
     # Setup some random keys for tracing
-    with open('randKeys.txt','r') as fid:
+    with open('randKeys.bin','r') as fid:
 	traceK = pickle.load(fid)
     for k in traceK:
 	nn.hist[k] = []
