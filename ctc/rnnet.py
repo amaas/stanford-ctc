@@ -94,7 +94,7 @@ class RNNet:
         if self.temporalLayer > 0:
             rs = self.layerSizes[self.temporalLayer-1]
             self.stack[-1] = [np.array(np.reshape(np.array(vec[start:start+rs*rs]),(rs,rs))),\
-                                   np.array(vec[start+rs*rs:end])]
+                                   np.array(vec[start+rs*rs:])]
     def vectorize(self, x):
         """
         Converts a stack object into a single parameter vector
@@ -102,7 +102,16 @@ class RNNet:
         returns a single numpy array
         XXX or does this return a list of lists?
         """
-        return [v for layer in x for wb in layer for w_or_b in wb for v in w_or_b]
+        r = []
+        for l in x:
+            for wb in l:
+                for w_or_b in wb:
+                    r.extend(w_or_b.reshape(-1).tolist())
+        
+
+        #r = [(v for v in w_or_b) if isinstance(w_or_b, np.ndarray) else w_or_b for layer in x for wb in layer for w_or_b in wb]
+        return r
+        #return [v for layer in x for wb in layer for w_or_b in wb for v in w_or_b]
 
     def paramVec(self):
         return self.vectorize(self.stack)
@@ -196,13 +205,13 @@ class RNNet:
             #print self.stack[stackMax][0].T.shape
             delta = np.dot(self.stack[stackMax][0].T, delta)
             
-
             # iterate over lower layers
             i = len(self.layerSizes)-1
             while i >= 0:
                 # add the temporal delta if this is the recurrent layer
-                #if (self.temporalLayer-1) == i:
-                #    delta += delta_t
+                if (self.temporalLayer-1) == i:
+                    #print delta.shape, delta_t.shape
+                    delta += delta_t
                 # push delta through activation function for this layer
                 #print i, stackMax, delta.shape, self.hActs[i+1][:,t].shape
                 delta = delta * self.activation(self.hActs[i+1][:,t], True)
@@ -213,10 +222,13 @@ class RNNet:
                 self.grad[i][1] += delta.reshape(-1,1)
 
                 # add the temporal delta if this is the recurrent layer
-                # if (self.temporalLayer-1) == i and t > 0:
-                #     self.grad[-1][0] += np.dot(delta.reshape(-1,1), self.hActs[i+1][:,t-1].T.reshape(1,-1))
-                #     # push delta through temporal connections
-                #     delta_t = np.dot(self.stack[-1][0].T, delta)
+                if (self.temporalLayer-1) == i and t > 0:
+                    self.grad[-1][0] += np.dot(delta.reshape(-1,1), self.hActs[i+1][:,t-1].T.reshape(1,-1))
+                    # push delta through temporal connections
+                    delta_t = np.dot(self.stack[-1][0].T, delta)
+
+                    # HACK no bias for temporal layer. Give it a gradient of 0
+                    self.grad[-1][1] = np.zeros(1)
 
                 # push the delta downward
                 w,b = self.stack[i]
@@ -231,10 +243,10 @@ if __name__=='__main__':
     numPhones = 6
     outputDim = numPhones + 1
     seq_len_out = 2
-    seq_len_in = 3
+    seq_len_in = 5
     # can't output more symbols than input times
     assert seq_len_in >= seq_len_out
-    layerSizes = [10, 5]
+    layerSizes = [10, 4]
 
     # make sure seq labels do not have '0' which is our blank index
     label_seq = np.floor(np.random.rand(seq_len_out,1)*numPhones)
@@ -242,7 +254,7 @@ if __name__=='__main__':
     data = np.random.randn(inputDim,seq_len_in)
 
     # make nnet
-    nn = RNNet(inputDim, outputDim, layerSizes, train=True, temporalLayer=-1)
+    nn = RNNet(inputDim, outputDim, layerSizes, train=True, temporalLayer=2)
     nn.initParams()
 
     # run
