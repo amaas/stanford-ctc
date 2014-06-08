@@ -32,7 +32,7 @@ def sigmoid(x, computeGrad = False):
 class NNet:
 
     def __init__(self,inputDim,outputDim,layerSizes,mbSize=256,train=True,
-		 activation='relu'):
+		 activation='relu_hard'):
         self.outputDim = outputDim
         self.inputDim = inputDim
         self.layerSizes = layerSizes
