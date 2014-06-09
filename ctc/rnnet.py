@@ -3,7 +3,7 @@
 import numpy as np
 import ctc
 # debug tool
-from IPython import embed
+#from IPython import embed
 #from ipsh import *
 #DEBUG = TRUE
 
@@ -236,6 +236,17 @@ class RNNet:
                 i -= 1
         #print self.grad
         return cost,self.grad
+
+    def toFile(self,fid):
+	"""
+	Saves only the network parameters to the given fd.
+	"""
+	import cPickle as pickle
+	pickle.dump(self.stack,fid)
+
+    def fromFile(self,fid):
+	import cPickle as pickle
+	self.stack = pickle.load(fid)
 
 
 if __name__=='__main__':

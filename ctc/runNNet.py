@@ -4,7 +4,7 @@ import numpy as np
 import cPickle as pickle
 
 import sgd
-import nnet
+import nnet, rnnet
 import timitLoader as dl
 
 #gp.board_id_to_use = 0
@@ -18,6 +18,7 @@ def run(args=None):
     # Architecture
     parser.add_option("--layers",dest="layers",type="string",
 	    default="100,100",help="layer1size,layer2size,...,layernsize")
+    parser.add_option("--temporal_layer",dest="temporalLayer",type="int",default=-1)
 
     # Optimization
     parser.add_option("--optimizer",dest="optimizer",type="string",
@@ -52,7 +53,13 @@ def run(args=None):
 	return
 	
     loader = dl.TimitLoader(opts.dataDir,opts.rawDim,opts.inputDim)
-    nn = nnet.NNet(opts.inputDim,opts.outputDim,opts.layers)
+    #NOTE at some point we need to unify the nnet and rnnet modules
+    nn = None
+    if opts.temporalLayer > 0:
+        nn = rnnet.RNNet(opts.inputDim,opts.outputDim,opts.layers, opts.temporalLayer)
+    else:
+        nn = nnet.NNet(opts.inputDim,opts.outputDim,opts.layers)
+
     nn.initParams()
     SGD = sgd.SGD(nn,alpha=opts.step,optimizer=opts.optimizer,
 		  momentum=opts.momentum)
@@ -62,6 +69,13 @@ def run(args=None):
 	traceK = pickle.load(fid)
     for k in traceK:
 	nn.hist[k] = []
+
+    # write initial model to disk
+    with open(opts.outFile,'w') as fid:
+        pickle.dump(opts,fid)
+        pickle.dump(SGD.costt,fid)
+        pickle.dump(nn.hist,fid)
+        nn.toFile(fid)
 
     # Training
     for _ in range(opts.epochs):
