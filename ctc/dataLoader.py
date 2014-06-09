@@ -2,7 +2,7 @@ import numpy as np
 from itertools import izip
 import os
 
-class TimitLoader:
+class DataLoader:
     def __init__(self,filedir,rawsize,imgsize):
         self.filedir = filedir
         self.rawsize = rawsize
@@ -61,10 +61,10 @@ class TimitLoader:
             
 # Usage example / eyeball test below
 if __name__=='__main__':
-    dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/timit/s5/exp/nn_train/"
-    rawSize = 41*23
+    dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/"
+    rawSize = 41*15
     inputSize = rawSize
-    dl = TimitLoader(dataDir,rawSize,inputSize)
+    dl = DataLoader(dataDir,rawSize,inputSize)
     filenum = 1
     
     data,alis,keys,sizes = dl.loadDataFile(filenum)
@@ -72,7 +72,3 @@ if __name__=='__main__':
     print "Number of transcripts: %d"%len(alis.keys())
     print "Number of keys: %d"%len(keys)
     print "Number of frames: %d"%sum(sizes)
-    #print sizes #keys#alis.values()
-
-    #data,alis,keys,sizes =dl.loadDataFileDict(filenum)
-    #print data.keys()

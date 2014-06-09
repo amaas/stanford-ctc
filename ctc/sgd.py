@@ -1,4 +1,5 @@
 import numpy as np
+import gnumpy as gp
 import pickle
 import random
 
@@ -14,11 +15,11 @@ class SGD:
 	self.optimizer = optimizer
 	if self.optimizer == 'momentum' or self.optimizer == 'nesterov':
 	    print "Using %s.."%self.optimizer
-	    self.velocity = [[np.zeros(w.shape),np.zeros(b.shape)] 
+	    self.velocity = [[gp.zeros(w.shape),gp.zeros(b.shape)] 
 			      for w,b in self.model.stack]
 	elif self.optimizer == 'adagrad' or self.optimizer == 'adadelta':
 	    print "Using %s.."%self.optimizer
-	    self.gradt = [[np.zeros(w.shape),np.zeros(b.shape)] 
+	    self.gradt = [[gp.zeros(w.shape),gp.zeros(b.shape)] 
 			      for w,b in self.model.stack]
 	elif self.optimizer == 'sgd':
 	    print "Using sgd.."
@@ -39,6 +40,7 @@ class SGD:
         mom = 0.5
 
 	# Shuffle utterances
+
 	random.shuffle(keys)
         for k in keys:
             self.it += 1
@@ -47,7 +49,8 @@ class SGD:
 	    if self.it > momIncrease:
 		mom = self.momentum
 
-            mb_data = data_dict[k]
+	    gp.free_reuse_cache()
+            mb_data = gp.garray(data_dict[k])
             # convert the list of string phone ids to int vector
             mb_labels = np.array(alis[k],dtype=np.int32)
 
@@ -55,12 +58,17 @@ class SGD:
 		# w = w+mom*velocity (evaluate gradient at future point)
 		self.model.updateParams(mom,self.velocity)
                 
-            cost,grad = self.model.costAndGrad(mb_data,mb_labels,key=k)
+            cost,grad,skip = self.model.costAndGrad(mb_data,mb_labels,key=k)
 
 	    # undo update
 	    if self.optimizer == 'nesterov':
 		# w = w-mom*velocity
 		self.model.updateParams(-mom,self.velocity)
+
+	    if skip:
+		print "SKIPPING: Key=%s, Cost=%f, SeqLen=%d, NumFrames=%d."%(k,
+			    cost,mb_labels.shape[0],mb_data.shape[1])
+		continue
 
 	    # compute exponentially weighted cost
 	    if self.it > 1:
@@ -109,7 +117,7 @@ class SGD:
 		scale = -self.alpha
 
 	    # update params
-	    self.model.updateParams(scale,update)
+	    self.model.updateParams(scale,update) 
 
 	    self.costt.append(cost)
             if self.it%1 == 0:
