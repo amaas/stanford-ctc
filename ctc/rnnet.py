@@ -1,7 +1,8 @@
 # TODO merge this with normal nnet
-# import gnumpy as gp
+import gnumpy as gp
 import numpy as np
-import ctc
+import ctc_fast as ctc
+#import ctc
 # debug tool
 #from IPython import embed
 #from ipsh import *
@@ -9,7 +10,7 @@ import ctc
 
 def relu_hard(x, computeGrad = False):
     if (not computeGrad): 
-        f = (1/2.)*(x+np.sign(x)*x)
+        f = (1/2.)*(x+gp.sign(x)*x)
         return f
 
     g = np.sign(x)
@@ -19,15 +20,15 @@ def relu(x, computeGrad = False):
     negslope = .01
     a = (1+negslope)/2.; b = (1-negslope)/2.
     if (not computeGrad): 
-        f = a*x + b*np.sign(x)*x
+        f = a*x + b*gp.sign(x)*x
         return f
 
-    g = a + b*np.sign(x)
+    g = a + b*gp.sign(x)
     return g
 
 def sigmoid(x, computeGrad = False):
     if (not computeGrad): 
-        f = np.logistic(x)
+        f = gp.logistic(x)
         return f
 
     g = x * (1.-x)
@@ -36,7 +37,7 @@ def sigmoid(x, computeGrad = False):
 class RNNet:
 
     def __init__(self,inputDim,outputDim,layerSizes,train=True,
-		 activation='relu_hard', temporalLayer = -1):
+		 activation='relu', temporalLayer = -1):
         """
         temporalLayer indicates which layer is recurrent. <= 0 indicates no recurrernce
         """
@@ -60,20 +61,20 @@ class RNNet:
 	Initialize parameters using 6/sqrt(fanin+fanout)
 	"""
         sizes = [self.inputDim]+self.layerSizes+[self.outputDim]
-        scales = [np.sqrt(6)/np.sqrt(n+m) for n,m in zip(sizes[:-1],sizes[1:])]
-        self.stack = [[np.random.rand(m,n)*2*s-s,np.zeros((m,1))] \
+        scales = [gp.sqrt(6)/gp.sqrt(n+m) for n,m in zip(sizes[:-1],sizes[1:])]
+        self.stack = [[gp.rand(m,n)*2*s-s,gp.zeros((m,1))] \
                             for n,m,s in zip(sizes[:-1],sizes[1:],scales)]
         if self.temporalLayer > 0:
             rs = sizes[self.temporalLayer]
-            s = np.sqrt(6)/ rs
+            s = gp.sqrt(6)/ rs
             # temporal layer stored at end of stack
-            self.stack.append((np.random.rand(rs,rs) * 2 * s - s, np.zeros(1)))
+            self.stack.append((gp.rand(rs,rs) * 2 * s - s, gp.zeros(1)))
         
         if self.train:
             #TODO why store all deltas?
-            #self.deltas = [np.empty((s,self.mbSize)) for s in sizes[1:]]
+            #self.deltas = [gp.empty((s,self.mbSize)) for s in sizes[1:]]
             #NOTE if a temporal layer is used it's already added to stack so will have a grad
-            self.grad = [[np.empty(w.shape),np.empty(b.shape)] for w,b in self.stack]
+            self.grad = [[gp.empty(w.shape),gp.empty(b.shape)] for w,b in self.stack]
  
 
     def updateParams(self,scale, update):
@@ -147,17 +148,17 @@ class RNNet:
         if self.temporalLayer > 0:
             stackMax -= 1
 
-        self.hActs = [np.empty((s,T)) for s in sizes]
+        self.hActs = [gp.empty((s,T)) for s in sizes]
         self.hActs[0] = data
         for t in range(T):
             i = 1
             for l in range(stackMax+1):
                 w,b = self.stack[l]
 
-                self.hActs[i][:,t] = np.dot(w, self.hActs[i-1][:,t])
+                self.hActs[i][:,t] = w.dot(self.hActs[i-1][:,t])
                 if (self.temporalLayer-1) == l and t>0:
                     w_t,b_t = self.stack[-1]
-                    self.hActs[i][:,t] += np.dot(w_t, self.hActs[i][:,t-1])
+                    self.hActs[i][:,t] += w_t.dot(self.hActs[i][:,t-1])
                 # have to index b to make np broadcast work. it's just a vector
                 self.hActs[i][:,t] += b[:,0]
 
@@ -169,13 +170,15 @@ class RNNet:
                 i += 1
 
         # convert final layer to probs after all time iteration complete
-        probs = self.hActs[-1]-np.max(self.hActs[-1],axis=0)
+        probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
+	probs = gp.as_numpy_array(probs)
         probs = np.exp(probs)
         probs = probs/np.sum(probs,axis=0)
 
         ## pass probs and label string to ctc loss
         # TODO how much does passing to different function cost us? 
-        cost, delta_output = ctc.ctc_loss(probs, labels, blank=0, is_prob=True)
+        print labels.shape
+        cost, delta_output, skip = ctc.ctc_loss(probs, labels.squeeze(), blank=0)
 
 	# Store probabilities and error signal for a given key
 	if key is not None and key in self.hist:
@@ -184,10 +187,10 @@ class RNNet:
         if not self.train:
             return cost,None
 
-        
+        delta_output =  gp.garray(delta_output)
         ## back prop through time
         # zero gradients
-        self.grad = [[np.zeros(w.shape),np.zeros(b.shape)] for w,b in self.stack]
+        self.grad = [[gp.zeros(w.shape),gp.zeros(b.shape)] for w,b in self.stack]
         if self.temporalLayer > 0:
             delta_t = np.zeros(self.layerSizes[self.temporalLayer-1])
         for t in reversed(range(T)):
@@ -198,12 +201,12 @@ class RNNet:
             #print self.hActs[-2].shape, delta.shape, self.stack[stackMax][0].shape
             #print delta.reshape(-1,1).shape, self.hActs[-2][:,t].reshape(-1,1).shape
             # TODO can we get rid of some of these annoying reshape -1 1?
-            self.grad[stackMax][0] +=  np.dot(delta.reshape(-1,1), self.hActs[-2][:,t].reshape(-1,1).T)
+            self.grad[stackMax][0] +=  delta.reshape(-1,1).dot(self.hActs[-2][:,t].reshape(-1,1).T)
             self.grad[stackMax][1] +=  delta.reshape(-1, 1)
 
             # push delta through output layer
             #print self.stack[stackMax][0].T.shape
-            delta = np.dot(self.stack[stackMax][0].T, delta)
+            delta = self.stack[stackMax][0].T.dot(delta)
             
             # iterate over lower layers
             i = len(self.layerSizes)-1
@@ -218,21 +221,21 @@ class RNNet:
                 #embed()
                 # compute the gradient
                 #print i, delta.shape, self.hActs[i][:,t].T.reshape(1,-1).shape, self.grad[i][0].shape
-                self.grad[i][0] += np.dot(delta.reshape(-1,1), self.hActs[i][:,t].T.reshape(1,-1))
+                self.grad[i][0] += delta.reshape(-1,1).dot(self.hActs[i][:,t].T.reshape(1,-1))
                 self.grad[i][1] += delta.reshape(-1,1)
 
                 # add the temporal delta if this is the recurrent layer
                 if (self.temporalLayer-1) == i and t > 0:
-                    self.grad[-1][0] += np.dot(delta.reshape(-1,1), self.hActs[i+1][:,t-1].T.reshape(1,-1))
+                    self.grad[-1][0] += delta.reshape(-1,1).dot(self.hActs[i+1][:,t-1].T.reshape(1,-1))
                     # push delta through temporal connections
-                    delta_t = np.dot(self.stack[-1][0].T, delta)
+                    delta_t = self.stack[-1][0].T.dot(delta)
 
                     # HACK no bias for temporal layer. Give it a gradient of 0
                     self.grad[-1][1] = np.zeros(1)
 
                 # push the delta downward
                 w,b = self.stack[i]
-                delta = np.dot(w.T, delta)
+                delta = w.T.dot(delta)
                 i -= 1
         #print self.grad
         return cost,self.grad
@@ -272,3 +275,28 @@ if __name__=='__main__':
     cost,grad = nn.costAndGrad(data,label_seq)
     print cost
     #print grad
+
+
+    # timing for a larger model
+    if True:
+        import timeit
+        setup = '''
+import numpy as np
+import rnnet
+inputDim = 300
+numPhones = 61
+outputDim = numPhones + 1
+seq_len_out = 100
+seq_len_in = 400
+layerSizes = [2048, 2048]
+label_seq = np.floor(np.random.rand(seq_len_out,1)*numPhones)
+label_seq = 1 + label_seq.astype(np.int32)
+data = np.random.randn(inputDim,seq_len_in)
+nn = rnnet.RNNet(inputDim, outputDim, layerSizes, train=True, temporalLayer=2)
+nn.initParams()
+'''
+        # run
+        print timeit.timeit('nn.costAndGrad(data,label_seq)', setup=setup, number=1)
+
+
+
