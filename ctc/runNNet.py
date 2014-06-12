@@ -72,16 +72,12 @@ def run(args=None):
 	nn.hist[k] = []
 
     # Training
-    fn = 0 # File number
     for _ in range(opts.epochs):
 	for i in np.random.permutation(opts.numFiles)+1:
 	    data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
-
 	    SGD.run_seq(data_dict,alis,keys,sizes)
 
-        ## TODO changed to save/anneal every 100 files for swbd
-        #fn += 1
-        #if fn%100 == 0:
+        # Save anneal after epoch
         SGD.alpha = SGD.alpha / opts.anneal
         with open(opts.outFile,'w') as fid:
             pickle.dump(opts,fid)
@@ -115,7 +111,6 @@ def test(opts):
 	    hyp,_ = nn.costAndGrad(data_dict[k])
 	    hyp = [phone_map[h] for h in hyp]
 	    ref = [phone_map[int(r)] for r in alis[k]]
-            print "Hyp %d -- Ref %d"%(len(hyp),len(ref))
 	    dist,ins,dels,subs,corr = ed.edit_distance(ref,hyp)
 	    print "Distance %d/%d"%(dist,len(ref))
 	    fid.write(k+' '+' '.join(hyp)+'\n')

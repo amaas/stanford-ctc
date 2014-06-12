@@ -1,6 +1,7 @@
 
 import numpy as np
 import editDistance as ed
+import heapq as hq
 
 def ctc_loss(params, seq, blank=0, is_prob = True):
     """
@@ -10,21 +11,15 @@ def ctc_loss(params, seq, blank=0, is_prob = True):
     is_prob - whether params have already passed through a softmax
     Returns objective and gradient.
     """
-    # TODO stateify this into object so don't have to redefine this on every
-    # call/ create new mem for grads etc
-    #print 'blank sym index', blank
-
     seqLen = seq.shape[0] # Length of label sequence (# phones)
     numphones = params.shape[0] # Number of labels
     L = 2*seqLen + 1 # Length of label sequence with blanks
     T = params.shape[1] # Length of utterance (time)
-    
 
     alphas = np.zeros((L,T))
     betas = np.zeros((L,T))
 
-    # Normalize params into probabilities
-    # TODO move this, assume NN outputs probs
+    # Keep for gradcheck move this, assume NN outputs probs
     if not is_prob:
         params = params - np.max(params,axis=0)
         params = np.exp(params)
@@ -97,11 +92,19 @@ def ctc_loss(params, seq, blank=0, is_prob = True):
 	    ab[s,:] = ab[s,:]/params[blank,:]
 	else:
 	    grad[seq[(s-1)/2],:] += ab[s,:]
-	    ab[s,:] = ab[s,:]/params[seq[(s-1)/2],:]
+	    ab[s,:] = ab[s,:]/(params[seq[(s-1)/2],:]) 
+    absum = np.sum(ab,axis=0)
 
-    grad = params - grad / (params * np.sum(ab,axis=0))
+    # Check for underflow or zeros in denominator of gradient
+    llDiff = np.abs(llForward-llBackward)
+    if llDiff > 1e-5 or np.sum(absum==0) > 0:
+	print "Diff in forward/backward LL : %f"%llDiff
+	print "Zeros found : (%d/%d)"%(np.sum(absum==0),absum.shape[0])
+	return -llForward,grad,True
 
-    return -llForward,grad
+    grad = params - grad / (params * absum) 
+
+    return -llForward,grad,False
 
 def decode_best_path(probs, ref=None, blank=0):
     """
@@ -115,7 +118,7 @@ def decode_best_path(probs, ref=None, blank=0):
 
     # Compute best path
     best_path = np.argmax(probs,axis=0).tolist()
-    
+  
     # Collapse phone string
     hyp = []
     for i,b in enumerate(best_path):
@@ -139,49 +142,50 @@ def decode_best_path(probs, ref=None, blank=0):
 def grad_check(epsilon=1e-4):
     np.random.seed(33)
 
-    numPhones = 40
-    seqLen = 10
-    uttLen = 30
+    numPhones = 62
+    seqLen = 54
+    uttLen = 453
 
     seq = np.floor(np.random.rand(seqLen,1)*numPhones)
     seq = seq.astype(np.int32)
 
     params = np.random.randn(numPhones,uttLen) 
-    _,grad = ctc_loss(params,seq, is_prob=False)
+    _,grad,_ = ctc_loss(params,seq, is_prob=False)
     numgrad = np.empty(grad.shape)
 
     for i in xrange(params.shape[0]):
 	print i
 	for j in xrange(params.shape[1]):
 	    params[i,j] += epsilon
-	    costP,_ = ctc_loss(params,seq, is_prob=False)
+	    costP,_,_ = ctc_loss(params,seq, is_prob=False)
 	    params[i,j] -= 2*epsilon
-	    costL,_ = ctc_loss(params,seq,is_prob=False)
+	    costL,_,_ = ctc_loss(params,seq,is_prob=False)
 	    params[i,j] += epsilon
 	    numgrad[i,j] = (costP - costL) / (2*epsilon)
+            print "Analytic %.7f -- Finite %.7f"%(grad[i,j],numgrad[i,j])
 
     diff = np.linalg.norm(numgrad-grad)/np.linalg.norm(numgrad+grad)
-    print "Relative norm of difference : %f"%diff
+    print "Relative norm of difference : %.10f"%diff
     return diff,numgrad,grad
     
 if __name__=='__main__':
     
     diff,numgrad,grad = grad_check()
     
-   # np.random.seed(33)
+    np.random.seed(33)
 
-   # numPhones = 40 
-   # seqLen = 10
-   # uttLen = 30
+    for _ in range(10):
+	numPhones = 40 
+	seqLen = 125
+	uttLen = 1200
 
-   # seq = np.floor(np.random.rand(seqLen,1)*numPhones)
-   # seq = seq.astype(np.int32)
+	seq = np.floor(np.random.rand(seqLen,1)*numPhones)
+	seq = seq.astype(np.int32)
 
-    # test params 1, gaussian 
-   # params = np.random.randn(numPhones,uttLen) 
+	params = np.random.randn(numPhones,uttLen) 
 
-   # cost,grad = ctc_loss(params,seq)
+	cost,grad = ctc_loss(params,seq, is_prob=False)
 
-   # print "Negative loglikelihood is %f"%cost
+	print "Negative loglikelihood is %f"%cost
 
 

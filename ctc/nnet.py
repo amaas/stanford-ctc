@@ -32,7 +32,7 @@ def sigmoid(x, computeGrad = False):
 
 class NNet:
 
-    def __init__(self,inputDim,outputDim,layerSizes,mbSize=256,train=True,
+    def __init__(self,inputDim,outputDim,layerSizes,train=True,
 		 activation='relu'):
         self.outputDim = outputDim
         self.inputDim = inputDim
@@ -45,7 +45,6 @@ class NNet:
             "sigmoid"   : sigmoid,
         }
         self.activation = self.funcdict[activation]
-        self.mbSize = mbSize
 	self.hist = {}
 
     def initParams(self):
@@ -56,10 +55,10 @@ class NNet:
         scales = [gp.sqrt(6)/gp.sqrt(n+m) for n,m in zip(sizes[:-1],sizes[1:])]
         self.stack = [[gp.rand(m,n)*2*s-s,gp.zeros((m,1))] \
                             for n,m,s in zip(sizes[:-1],sizes[1:],scales)]
-        self.hActs = [gp.empty((s,self.mbSize)) for s in sizes]
+        self.hActs = [gp.empty((s,1)) for s in sizes]
 
         if self.train:
-            self.deltas = [gp.empty((s,self.mbSize)) for s in sizes[1:]]
+            self.deltas = [gp.empty((s,1)) for s in sizes[1:]]
             self.grad = [[gp.empty(w.shape),gp.empty(b.shape)] for w,b in self.stack]
 
 
