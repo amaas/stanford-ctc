@@ -241,7 +241,7 @@ class RNNet:
                 delta = w.T.dot(delta)
                 i -= 1
         #print self.grad
-        return cost,self.grad
+        return cost,self.grad, skip
 
     def toFile(self,fid):
 	"""
