@@ -68,7 +68,7 @@ class RNNet:
             rs = sizes[self.temporalLayer]
             s = gp.sqrt(6)/ rs
             # temporal layer stored at end of stack
-            self.stack.append((gp.rand(rs,rs) * 2 * s - s, gp.zeros(1)))
+            self.stack.append([gp.rand(rs,rs) * 2 * s - s, gp.zeros((2,1))])
         
         if self.train:
             #TODO why store all deltas?
@@ -88,14 +88,14 @@ class RNNet:
         start = 0
         sizes = [self.inputDim]+self.layerSizes+[self.outputDim]
         for n,m,i in zip(sizes[:-1],sizes[1:],range(len(sizes)-1)):
-            # TODO why is this unpacking into a list for w,b instead of tuple?
-            self.stack[i] = [np.array(np.reshape(np.array(vec[start:start+m*n]),(m,n))),\
-                np.array(np.reshape(np.array(vec[start+m*n:start+m*(n+1)]),(m,1)))]
+            # TODO why is this ugpacking into a list for w,b instead of tuple?
+            self.stack[i] = [gp.garray(vec[start:start+m*n]).reshape(m,n),\
+                                 gp.garray(vec[start+m*n:start+m*(n+1)]).reshape(m,1)]
             start += m*(n+1)
         if self.temporalLayer > 0:
             rs = self.layerSizes[self.temporalLayer-1]
-            self.stack[-1] = [np.array(np.reshape(np.array(vec[start:start+rs*rs]),(rs,rs))),\
-                                   np.array(vec[start+rs*rs:])]
+            self.stack[-1] = [gp.garray(vec[start:start+rs*rs]).reshape(rs,rs),\
+                                  gp.garray(vec[start+rs*rs:])]
     def vectorize(self, x):
         """
         Converts a stack object into a single parameter vector
@@ -103,11 +103,13 @@ class RNNet:
         returns a single numpy array
         XXX or does this return a list of lists?
         """
-        r = []
-        for l in x:
-            for wb in l:
-                for w_or_b in wb:
-                    r.extend(w_or_b.reshape(-1).tolist())
+        return [v for layer in x for wb in layer for w_or_b in wb for v in w_or_b]
+
+        # r = []
+        # for l in x:
+        #     for wb in l:
+        #         for w_or_b in wb:
+        #             r.extend(w_or_b.reshape(-1).tolist())
         
 
         #r = [(v for v in w_or_b) if isinstance(w_or_b, np.ndarray) else w_or_b for layer in x for wb in layer for w_or_b in wb]
@@ -150,24 +152,27 @@ class RNNet:
 
         self.hActs = [gp.empty((s,T)) for s in sizes]
         self.hActs[0] = data
-        for t in range(T):
-            i = 1
-            for l in range(stackMax+1):
-                w,b = self.stack[l]
+        #for t in range(T):
+        i = 1
+        for l in range(stackMax+1):
+            w,b = self.stack[l]
 
-                self.hActs[i][:,t] = w.dot(self.hActs[i-1][:,t])
-                if (self.temporalLayer-1) == l and t>0:
-                    w_t,b_t = self.stack[-1]
-                    self.hActs[i][:,t] += w_t.dot(self.hActs[i][:,t-1])
-                # have to index b to make np broadcast work. it's just a vector
-                self.hActs[i][:,t] += b[:,0]
+            self.hActs[i] = w.dot(self.hActs[i-1]) + b
+            # loop over time for recurrent layer
+            if (self.temporalLayer-1) == l:
+                for t in range(T):
+                    if t > 0:
+                        self.hActs[i][:,t] += self.stack[-1][0].dot(self.hActs[i][:,t-1])
+                    # nonlinearity 
+                    if i <= stackMax:
+                        self.hActs[i][:,t] = self.activation(self.hActs[i][:,t])
+            # hidden layer activation function for batch forward prop
+            elif i <= stackMax:
+                self.hActs[i] = self.activation(self.hActs[i])
 
-                # hidden layer activation function
-                #print i
-                if i <= stackMax:
-                    #print i, self.hActs[i].shape, 'applied nonlin'
-                    self.hActs[i][:,t] = self.activation(self.hActs[i][:,t])
-                i += 1
+            #    w_t,b_t = self.stack[-1][0]
+            #    self.hActs[i][:,t] += self.stack[-1][0].dot(self.hActs[i][:,t-1])
+            i += 1
 
         # convert final layer to probs after all time iteration complete
         probs = self.hActs[-1]-gp.max(self.hActs[-1],axis=0)
@@ -177,7 +182,6 @@ class RNNet:
 
         ## pass probs and label string to ctc loss
         # TODO how much does passing to different function cost us? 
-        print labels.shape
         cost, delta_output, skip = ctc.ctc_loss(probs, labels.squeeze(), blank=0)
 
 	# Store probabilities and error signal for a given key
@@ -205,7 +209,6 @@ class RNNet:
             self.grad[stackMax][1] +=  delta.reshape(-1, 1)
 
             # push delta through output layer
-            #print self.stack[stackMax][0].T.shape
             delta = self.stack[stackMax][0].T.dot(delta)
             
             # iterate over lower layers
@@ -231,7 +234,7 @@ class RNNet:
                     delta_t = self.stack[-1][0].T.dot(delta)
 
                     # HACK no bias for temporal layer. Give it a gradient of 0
-                    self.grad[-1][1] = np.zeros(1)
+                    self.grad[-1][1] = np.zeros((2,1))
 
                 # push the delta downward
                 w,b = self.stack[i]
