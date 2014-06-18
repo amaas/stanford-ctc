@@ -165,7 +165,9 @@ class NNet:
                     # Accumulate temporal gradient
                     cm.dot(self.deltaTemp,self.hActs[i].get_col_slice(t-1,t).T,
                             target=dwt,beta=1.0)
-                deltasOut.get_col_slice(0,1).mult(self.tmpGrad.get_col_slice(0,1))
+                deltaSlice = deltasOut.get_col_slice(0,1)
+                cm.dot(wt.T,self.deltaTemp,target=deltaSlice,beta=1.0)
+                deltaSlice.mult(self.tmpGrad.get_col_slice(0,1))
 
             if i > 0 and i != self.temporalLayer:
                 deltasOut.mult(self.tmpGrad)
@@ -203,7 +205,7 @@ class NNet:
         self.stack = [[cm.CUDAMatrix(w),cm.CUDAMatrix(b)] 
                         for w,b in stack]
 
-    def check_grad(self,data,labels,epsilon=1e-4):
+    def check_grad(self,data,labels,epsilon=1e-3):
         cost,grad,_ = self.costAndGrad(data,labels)
         # TODO randomize grad check selection
         for param,delta in zip(self.stack,grad):
@@ -236,7 +238,7 @@ if __name__=='__main__':
     data_dict,alis,keys,_ = loader.loadDataFileDict(1)
     data,labels = data_dict[keys[3]],np.array(alis[keys[3]],dtype=np.int32)
 
-    rnn = RNNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=1)
+    rnn = NNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=2)
     rnn.initParams()
     cost,grad,_ = rnn.costAndGrad(data,labels)
     print "COST %.9f"%cost
