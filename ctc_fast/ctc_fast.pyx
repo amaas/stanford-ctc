@@ -12,6 +12,13 @@ ctypedef np.float64_t f_t
 @cython.wraparound(False)
 def ctc_loss(double[::1,:] params not None, 
         int[::1] seq not None, unsigned int blank=0):
+    """
+    CTC loss function.
+    params - n x m matrix of n-D probability distributions over m frames. Must
+    be in Fortran order in memory.
+    seq - sequence of phone id's for given example.
+    Returns objective and gradient.
+    """
 
     cdef unsigned int seqLen = seq.shape[0] # Length of label sequence (# phones)
     cdef unsigned int numphones = params.shape[0] # Number of labels
@@ -144,4 +151,31 @@ def ctc_loss(double[::1,:] params not None,
 
     return -llForward,grad,False
 
+def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
+    """
+    Computes best path given sequence of probability distributions per frame.
+    Simply chooses most likely label at each timestep then collapses result to
+    remove blanks and repeats.
+    Optionally computes edit distance between reference transcription
+    and best path if reference provided.
+    """
+
+    # Compute best path
+    cdef unsigned int T = probs.shape[1]
+    cdef long [::1] best_path = np.argmax(probs,axis=0)
+
+    # Collapse phone string
+    cdef unsigned int i, b
+    hyp = []
+    for i in xrange(T):
+        b = best_path[i]
+        # ignore blanks
+        if b == blank:
+            continue
+        # ignore repeats
+        elif i != 0 and  b == best_path[i-1]:
+            continue
+        else:
+            hyp.append(b)
+    return hyp
 

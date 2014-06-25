@@ -2,6 +2,7 @@ import gnumpy as gp
 import cudamat as cm
 import ctc_fast as ctc
 import numpy as np
+import numpy.linalg as nl
 import pdb
 
 class NNet:
@@ -18,6 +19,9 @@ class NNet:
         self.layerSizes = [layerSize]*numLayers
         self.maxBatch = maxBatch
         self.train = train
+
+        if not self.train:
+            np.seterr(all='ignore')
 
         if temporalLayer <= 0 or temporalLayer >= numLayers:
             self.temporalLayer = -1
@@ -58,13 +62,14 @@ class NNet:
 
             scale = np.sqrt(6)/np.sqrt(self.layerSize*2)
             wt = cm.CUDAMatrix(2*scale*np.random.rand(self.layerSize,
-                    self.layerSize) - scale)
+                               self.layerSize)-scale)
             self.stack.append([wt,dummy])
 
-            dwt = cm.empty((self.layerSize,self.layerSize))
-            self.grad.append([dwt,dummy])
+            if self.train:
+                dwt = cm.empty((self.layerSize,self.layerSize))
+                self.grad.append([dwt,dummy])
 
-            self.deltaTemp = cm.empty((self.layerSize,1))
+                self.deltaTemp_M = cm.empty((self.layerSize,self.maxBatch))
 
 
     def setViews(self,batchSize):
@@ -73,14 +78,17 @@ class NNet:
         """
         assert batchSize <= self.maxBatch, "Batch size exceeds max batch"
         self.hActs = [H.get_col_slice(0,batchSize) for H in self.hActs_M]
-        self.deltasC = self.deltasC_M.get_col_slice(0,batchSize)
-        self.deltasOut = self.deltasOut_M.get_col_slice(0,batchSize)
-        self.deltasIn = self.deltasIn_M.get_col_slice(0,batchSize)
         self.probs = self.probs_M.get_col_slice(0,batchSize)
         self.rowVec = self.rowVec_M.get_col_slice(0,batchSize)
-        self.tmpGrad = self.tmpGrad_M.get_col_slice(0,batchSize)
+        if self.train:
+            self.deltasC = self.deltasC_M.get_col_slice(0,batchSize)
+            self.deltasOut = self.deltasOut_M.get_col_slice(0,batchSize)
+            self.deltasIn = self.deltasIn_M.get_col_slice(0,batchSize)
+            self.tmpGrad = self.tmpGrad_M.get_col_slice(0,batchSize)
+            if self.temporalLayer > 0:
+                self.deltaTemp = self.deltaTemp_M.get_col_slice(0,batchSize)
 
-    def costAndGrad(self,data,labels):
+    def costAndGrad(self,data,labels=None):
         
         T = data.shape[1]
         self.setViews(T)
@@ -88,11 +96,13 @@ class NNet:
         if self.temporalLayer > 0:
             stack = self.stack[:-1]
             wt,_ = self.stack[-1]
-            grad = self.grad[:-1]
-            dwt,_ = self.grad[-1]
+            if self.train:
+                grad = self.grad[:-1]
+                dwt,_ = self.grad[-1]
         else:
             stack = self.stack
-            grad = self.grad
+            if self.train:
+                grad = self.grad
         
         # forward prop
         self.hActs[0].assign(cm.CUDAMatrix(data))
@@ -104,14 +114,10 @@ class NNet:
 
             # forward prop through time
             if i == self.temporalLayer:
-                prevSlice = self.hActs[i].get_col_slice(0,1)
-                nextSlice = None
                 for t in xrange(1,T):
-                    prevSlice.maximum(0.0)
-                    nextSlice = self.hActs[i].get_col_slice(t,t+1)
-                    cm.dot(wt,prevSlice,target=nextSlice,beta=1.0)
-                    prevSlice = nextSlice
-                prevSlice.maximum(0.0)
+                    self.hActs[i].maximum(0.0,col=t-1)
+                    cm.mvdot_col_slice(wt,self.hActs[i],t-1,self.hActs[i],t,beta=1.0)
+                self.hActs[i].maximum(0.0,col=T-1)
 
             if i <= self.numLayers and i != self.temporalLayer:
                 # hard relu
@@ -129,12 +135,17 @@ class NNet:
         self.probs.mult_by_row(self.rowVec)
 
         self.probs.copy_to_host()
+	if not self.train:
+            probs = np.asfortranarray(np.log(self.probs.numpy_array),dtype=np.float64)
+	    return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)
-        self.deltasC.assign(cm.CUDAMatrix(deltas))
 
         if skip:
             return cost,self.grad,skip
+
+        self.deltasC.assign(cm.CUDAMatrix(deltas))
 
         # back prop
         i = self.numLayers 
@@ -151,23 +162,21 @@ class NNet:
 
             # backprop through time
             if i == self.temporalLayer:
-                dwt.assign(0.0)
                 self.deltaTemp.assign(0.0)
                 for t in xrange(T-1,0,-1):
                     # Add in temporal delta
-                    deltaSlice = deltasOut.get_col_slice(t,t+1)
-                    cm.dot(wt.T,self.deltaTemp,target=deltaSlice,beta=1.0)
+                    cm.mvdot_col_slice(wt.T,self.deltaTemp,t,deltasOut,t,beta=1.0)
 
                     # Push through activation fn
-                    deltaSlice.mult(self.tmpGrad.get_col_slice(t,t+1)) 
-                    self.deltaTemp.assign(deltaSlice)
+                    deltasOut.mult_slice(t,self.tmpGrad,t) 
+                    self.deltaTemp.set_single_col(t-1,deltasOut,t)
 
-                    # Accumulate temporal gradient
-                    cm.dot(self.deltaTemp,self.hActs[i].get_col_slice(t-1,t).T,
-                            target=dwt,beta=1.0)
-                deltaSlice = deltasOut.get_col_slice(0,1)
-                cm.dot(wt.T,self.deltaTemp,target=deltaSlice,beta=1.0)
-                deltaSlice.mult(self.tmpGrad.get_col_slice(0,1))
+                # Accumulate temporal gradient
+                cm.dot(self.deltaTemp,self.hActs[i].T,
+                        target=dwt)
+
+                cm.mvdot_col_slice(wt.T,self.deltaTemp,0,deltasOut,0,beta=1.0)
+                deltasOut.mult_slice(0,self.tmpGrad,0)
 
             if i > 0 and i != self.temporalLayer:
                 deltasOut.mult(self.tmpGrad)
@@ -202,8 +211,13 @@ class NNet:
     def fromFile(self,fid):
 	import cPickle as pickle
         stack = pickle.load(fid)
-        self.stack = [[cm.CUDAMatrix(w),cm.CUDAMatrix(b)] 
-                        for w,b in stack]
+        for (w,b),(wi,bi) in zip(self.stack,stack):
+            w.copy_to_host()
+            b.copy_to_host()
+            w.numpy_array[:] = wi[:]
+            b.numpy_array[:] = bi[:]
+            w.copy_to_device()
+            b.copy_to_device()
 
     def check_grad(self,data,labels,epsilon=1e-3):
         cost,grad,_ = self.costAndGrad(data,labels)
@@ -225,7 +239,7 @@ class NNet:
 if __name__=='__main__':
     import dataLoader as dl
     np.random.seed(33)
-    layerSize = 100
+    layerSize = 40
     numLayers = 3
 
     dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/"

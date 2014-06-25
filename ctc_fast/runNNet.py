@@ -4,7 +4,7 @@ import cPickle as pickle
 import cudamat as cm
 
 import sgd
-import rnnet
+import rnnet as rnnet
 import dataLoader as dl
 
 def run(args=None):
@@ -53,6 +53,11 @@ def run(args=None):
 
     cm.cuda_set_device(opts.deviceId)
 
+    # Testing
+    if opts.test:
+	test(opts)
+	return
+	
     loader = dl.DataLoader(opts.dataDir,opts.rawDim,opts.inputDim)
 
     nn = rnnet.NNet(opts.inputDim,opts.outputDim,opts.layerSize,opts.numLayers,
@@ -73,8 +78,8 @@ def run(args=None):
     for _ in range(opts.epochs):
 	for i in np.random.permutation(opts.numFiles)+1:
             start = time.time()
-	    data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
-	    SGD.run(data_dict,alis,keys,sizes)
+            data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
+            SGD.run(data_dict,alis,keys,sizes)
             end = time.time()
             print "File time %f"%(end-start)
 
@@ -85,6 +90,53 @@ def run(args=None):
             nn.toFile(fid)
 
         SGD.alpha = SGD.alpha / opts.anneal
+
+def test(opts):
+    import editDistance as ed
+
+    print "Testing model %s"%opts.inFile
+
+    phone_map = get_char_map(opts.dataDir)
+
+    with open(opts.inFile,'r') as fid:
+	old_opts = pickle.load(fid)
+	_ = pickle.load(fid)
+	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim)
+	nn = rnnet.NNet(old_opts.inputDim,old_opts.outputDim,old_opts.layerSize,old_opts.numLayers,
+                old_opts.maxUttLen,temporalLayer=old_opts.temporalLayer,train=False)
+	nn.initParams()
+	nn.fromFile(fid)
+
+    totdist = numphones = 0
+
+    lengthsH = []
+    lengthsR = []
+    fid = open('hyp.txt','w')
+    for i in range(1,opts.numFiles+1):
+	data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
+	for k in keys:
+	    hyp = nn.costAndGrad(data_dict[k])
+	    hyp = [phone_map[h] for h in hyp]
+	    ref = [phone_map[int(r)] for r in alis[k]]
+            lengthsH.append(float(len(hyp)))
+            lengthsR.append(float(len(ref)))
+	    dist,ins,dels,subs,corr = ed.edit_distance(ref,hyp)
+	    print "Distance %d/%d"%(dist,len(ref))
+	    fid.write(k+' '+' '.join(hyp)+'\n')
+	    totdist += dist
+	    numphones += len(alis[k])
+
+    fid.close()
+    print "Average Lengths HYP: %f REF: %f"%(np.mean(lengthsH),np.mean(lengthsR))
+    print "CER : %f"%(100*totdist/float(numphones))
+
+def get_char_map(dataDir):
+    kaldi_base = '/'.join(dataDir.split('/')[:-3])+'/'
+    with open(kaldi_base+'ctc-utils/chars.txt','r') as fid:
+	labels = [l.strip().split() for l in fid.readlines()]
+        labels = dict((int(k),v) for v,k in labels)
+    return labels
+
 
 if __name__=='__main__':
     run()
