@@ -5,8 +5,8 @@ set -x
 
 base=/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk
 swbd=$base/egs/swbd/s5b
-infile=/afs/cs.stanford.edu/u/awni/ctc/models/nesterov_layers_2048,2048,2048,2048,2048_step_1e-4_mom_.95_anneal_round2.bin
-data=dev
+infile=/afs/cs.stanford.edu/u/awni/ctc/$1
+data=train
 numfiles=1
 
 echo $infile

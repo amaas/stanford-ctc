@@ -7,7 +7,6 @@ import sgd
 import nnet, rnnet
 import dataLoader as dl
 
-
 #gp.board_id_to_use = 0
 
 def run(args=None):
@@ -87,10 +86,14 @@ def run(args=None):
         nn.toFile(fid)
 
     # Training
+    import time
     for _ in range(opts.epochs):
 	for i in np.random.permutation(opts.numFiles)+1:
+            start = time.time()
 	    data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
 	    SGD.run_seq(data_dict,alis,keys,sizes)
+            end = time.time()
+            print "File time %f"%(end-start)
 
         # Save anneal after epoch
         SGD.alpha = SGD.alpha / opts.anneal
@@ -112,6 +115,8 @@ def test(opts):
 	_ = pickle.load(fid)
 	_ = pickle.load(fid)
 	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim)
+        if 'layers' not in dir(old_opts):
+            old_opts.layers = [old_opts.layerSize]*old_opts.numLayers
 	nn = nnet.NNet(old_opts.inputDim,old_opts.outputDim,old_opts.layers,train=False)
 	nn.initParams()
 	nn.fromFile(fid)
@@ -123,7 +128,7 @@ def test(opts):
 	data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
 	for k in keys:
 	    gp.free_reuse_cache()
-	    hyp,_ = nn.costAndGrad(data_dict[k])
+	    hyp = nn.costAndGrad(data_dict[k])
 	    hyp = [phone_map[h] for h in hyp]
 	    ref = [phone_map[int(r)] for r in alis[k]]
 	    dist,ins,dels,subs,corr = ed.edit_distance(ref,hyp)
@@ -141,8 +146,6 @@ def get_phone_map_swbd():
 	labels = [l.strip().split() for l in fid.readlines()]
         labels = dict((int(k),v) for v,k in labels)
     return labels
-
-
 
 def get_phone_map_timit():
     kaldi_base = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/timit/s5/"

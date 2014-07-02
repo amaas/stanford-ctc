@@ -209,6 +209,7 @@ class NNet:
     def fromFile(self,fid):
 	import cPickle as pickle
 	self.stack = pickle.load(fid)
+        self.stack = [[gp.garray(w),gp.garray(b)] for w,b in self.stack]
 
 def gradcheck(epsilon=1e-4):
 
