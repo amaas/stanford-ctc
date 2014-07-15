@@ -1,12 +1,29 @@
 import numpy as np
 from itertools import izip
 import os
+import multiprocessing as mp
 
 class DataLoader:
     def __init__(self,filedir,rawsize,imgsize):
         self.filedir = filedir
         self.rawsize = rawsize
         self.imgsize = imgsize
+
+    def getDataAsynch(self):
+        assert self.p is not None, "Error in order of asynch calls."
+        data_dict,alis,keys,sizes = self.p_conn.recv()
+        self.p.join()
+        return data_dict,alis,keys,sizes
+
+    def loadDataFileAsynch(self,filenum):
+        # spawn process to load datafile
+        self.p_conn, c_conn = mp.Pipe()
+        self.p = mp.Process(target=self.loadAndPipeFile,args=(filenum,c_conn))
+        self.p.start()
+
+    def loadAndPipeFile(self,filenum,conn):
+        conn.send(self.loadDataFileDict(filenum))
+        conn.close()
 
     def loadDataFile(self,filenum):
     
