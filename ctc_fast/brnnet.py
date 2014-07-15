@@ -27,6 +27,8 @@ class NNet:
         else:
             self.temporalLayer = temporalLayer
 
+        self.maxAct = 20.0
+
     def initParams(self):
 	"""
 	Initialize parameters using 6/sqrt(fanin+fanout)
@@ -104,7 +106,7 @@ class NNet:
                 self.deltasFor = self.deltasFor_M.get_col_slice(0,batchSize)
                 self.deltasBack = self.deltasBack_M.get_col_slice(0,batchSize)
 
-    def costAndGrad(self,data,labels=None):
+    def costAndGrad(self,data,labels=None,returnProbs=False):
         
         T = data.shape[1]
         self.setViews(T)
@@ -133,13 +135,13 @@ class NNet:
             if i == self.temporalLayer:
                 self.hActsFor.assign(self.hActs[i])
                 self.hActsBack.assign(self.hActs[i])
-                self.hActsFor.maximum(0.0,col=0)
-                self.hActsBack.maximum(0.0,col=T-1)
+                self.hActsFor.minmax(0.0,self.maxAct,col=0)
+                self.hActsBack.minmax(0.0,self.maxAct,col=T-1)
                 for t in xrange(1,T):
                     cm.mvdot_col_slice(wtf,self.hActsFor,t-1,self.hActsFor,t,beta=1.0)
-                    self.hActsFor.maximum(0.0,col=t)
+                    self.hActsFor.minmax(0.0,self.maxAct,col=t)
                     cm.mvdot_col_slice(wtb,self.hActsBack,T-t,self.hActsBack,T-t-1,beta=1.0)
-                    self.hActsBack.maximum(0.0,col=T-t-1)
+                    self.hActsBack.minmax(0.0,self.maxAct,col=T-t-1)
                 self.hActsFor.add(self.hActsBack,target=self.hActs[i])
 
             if i <= self.numLayers and i != self.temporalLayer:
@@ -158,8 +160,12 @@ class NNet:
         self.probs.mult_by_row(self.rowVec)
 
         self.probs.copy_to_host()
-	if not self.train:
-	    return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+        if not self.train: 
+            if returnProbs:
+                return np.ascontiguousarray(self.probs.numpy_array)
+            else:
+                return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)
@@ -183,8 +189,8 @@ class NNet:
 
             # backprop through time
             if i == self.temporalLayer:
-                self.hActsFor.sign(target=self.tmpGradFor)
-                self.hActsBack.sign(target=self.tmpGradBack)
+                self.hActsFor.within(0.0,self.maxAct,target=self.tmpGradFor)
+                self.hActsBack.within(0.0,self.maxAct,target=self.tmpGradBack)
                 self.deltasFor.assign(deltasOut)
                 self.deltasBack.assign(deltasOut)
                 self.deltasFor.mult_slice(T-1,self.tmpGradFor,T-1)

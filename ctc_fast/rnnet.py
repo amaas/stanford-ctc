@@ -1,8 +1,6 @@
-import gnumpy as gp
 import cudamat as cm
 import ctc_fast as ctc
 import numpy as np
-import numpy.linalg as nl
 import pdb
 
 class NNet:
@@ -27,6 +25,8 @@ class NNet:
             self.temporalLayer = -1
         else:
             self.temporalLayer = temporalLayer
+
+        self.maxAct = 20.0
 
     def initParams(self):
 	"""
@@ -61,8 +61,8 @@ class NNet:
             dummy.assign(0.0)
 
             scale = np.sqrt(6)/np.sqrt(self.layerSize*2)
-            wt = cm.CUDAMatrix(2*scale*np.random.rand(self.layerSize,
-                               self.layerSize)-scale)
+            wt = 2*scale*np.random.rand(self.layerSize,self.layerSize)-scale
+            wt = cm.CUDAMatrix(wt)
             self.stack.append([wt,dummy])
 
             if self.train:
@@ -104,7 +104,7 @@ class NNet:
             if self.train:
                 grad = self.grad
         
-        # forward prop
+        # forward prop 
         self.hActs[0].assign(cm.CUDAMatrix(data))
 
         i = 1
@@ -115,9 +115,9 @@ class NNet:
             # forward prop through time
             if i == self.temporalLayer:
                 for t in xrange(1,T):
-                    self.hActs[i].maximum(0.0,col=t-1)
+                    self.hActs[i].minmax(0.0,self.maxAct,col=t-1)
                     cm.mvdot_col_slice(wt,self.hActs[i],t-1,self.hActs[i],t,beta=1.0)
-                self.hActs[i].maximum(0.0,col=T-1)
+                self.hActs[i].minmax(0.0,self.maxAct,col=T-1)
 
             if i <= self.numLayers and i != self.temporalLayer:
                 # hard relu
@@ -136,7 +136,6 @@ class NNet:
 
         self.probs.copy_to_host()
 	if not self.train:
-            probs = np.asfortranarray(np.log(self.probs.numpy_array),dtype=np.float64)
 	    return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
@@ -157,11 +156,11 @@ class NNet:
 
             # compute next layer deltas
             if i > 0:
-                self.hActs[i].sign(target=self.tmpGrad)
                 cm.dot(w.T,deltasIn,target=deltasOut)
 
             # backprop through time
             if i == self.temporalLayer:
+                self.hActs[i].within(0.0,self.maxAct,target=self.tmpGrad)
                 self.deltaTemp.assign(0.0)
                 for t in xrange(T-1,0,-1):
                     # Add in temporal delta
@@ -171,6 +170,7 @@ class NNet:
                     deltasOut.mult_slice(t,self.tmpGrad,t) 
                     self.deltaTemp.set_single_col(t-1,deltasOut,t)
 
+ 
                 # Accumulate temporal gradient
                 cm.dot(self.deltaTemp,self.hActs[i].T,
                         target=dwt)
@@ -179,6 +179,7 @@ class NNet:
                 deltasOut.mult_slice(0,self.tmpGrad,0)
 
             if i > 0 and i != self.temporalLayer:
+                self.hActs[i].sign(target=self.tmpGrad)
                 deltasOut.mult(self.tmpGrad)
 
             if i == self.numLayers:
