@@ -39,6 +39,7 @@ def writeLogLikes(loader,nn,outDir,fn):
         probs = nn.costAndGrad(data_dict[k],returnProbs=True)
         assert not np.isfortran(probs) and probs.dtype==np.float32,\
             "Probs array malformed."
+        probs = np.log(probs)
         probs.tofile(fid)
 
     print "Done with file %d"%fn
