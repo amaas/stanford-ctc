@@ -162,7 +162,7 @@ class NNet:
         self.probs.copy_to_host()
         if not self.train: 
             if returnProbs:
-                return np.ascontiguousarray(self.probs.numpy_array)
+                return self.probs.numpy_array
             else:
                 return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
 

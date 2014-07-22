@@ -37,10 +37,10 @@ def writeLogLikes(loader,nn,outDir,fn):
             "Need larger max utt length."
         writeUttHeader(fid,k,sizes[i],nn.outputDim)
         probs = nn.costAndGrad(data_dict[k],returnProbs=True)
-        assert not np.isfortran(probs) and probs.dtype==np.float32,\
-            "Probs array malformed."
+        assert probs.dtype==np.float32,"Probs array malformed."
+        assert probs.shape[0]==nn.outputDim,"Probs dimensions mismatch."
         probs = np.log(probs)
-        probs.tofile(fid)
+        probs.T.tofile(fid)
 
     print "Done with file %d"%fn
     fid.close()
