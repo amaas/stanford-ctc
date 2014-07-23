@@ -39,7 +39,8 @@ def writeLogLikes(loader,nn,outDir,fn):
         probs = nn.costAndGrad(data_dict[k],returnProbs=True)
         assert probs.dtype==np.float32,"Probs array malformed."
         assert probs.shape[0]==nn.outputDim,"Probs dimensions mismatch."
-        probs = np.log(probs)
+        # log while avoiding underflow
+        probs = np.log(probs + 1e-40)
         probs.T.tofile(fid)
         lik_dict[k] = probs
 
