@@ -4,7 +4,7 @@ import cPickle as pickle
 import cudamat as cm
 
 import sgd
-import rnnet as rnnet
+import brnnet as rnnet
 import dataLoader as dl
 
 def run(args=None):
@@ -30,8 +30,10 @@ def run(args=None):
 	    help="Sets (learning rate := learning rate / anneal) after each epoch.")
 
     # Data
-    parser.add_option("--dataDir",dest="dataDir",type="string",
+    parser.add_option("--dataDirFeat",dest="dataDirFeat",type="string",
 	    default="/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
+    parser.add_option("--dataDirAli",dest="dataDirAli",type="string", default="")
+
     parser.add_option("--numFiles",dest="numFiles",type="int",default=384)
     parser.add_option("--inputDim",dest="inputDim",type="int",default=41*15)
     parser.add_option("--rawDim",dest="rawDim",type="int",default=41*15)
@@ -57,8 +59,9 @@ def run(args=None):
     if opts.test:
 	test(opts)
 	return
-	
-    loader = dl.DataLoader(opts.dataDir,opts.rawDim,opts.inputDim)
+    if opts.dataDirAli == "":
+        opts.dataDirAli = opts.dataDirFeat
+    loader = dl.DataLoader(opts.dataDirFeat,opts.rawDim,opts.inputDim,opts.dataDirAli)
 
     nn = rnnet.NNet(opts.inputDim,opts.outputDim,opts.layerSize,opts.numLayers,
                 opts.maxUttLen,temporalLayer=opts.temporalLayer)
@@ -96,12 +99,12 @@ def test(opts):
 
     print "Testing model %s"%opts.inFile
 
-    phone_map = get_char_map(opts.dataDir)
+    phone_map = get_char_map(opts.dataDirAli)
 
     with open(opts.inFile,'r') as fid:
 	old_opts = pickle.load(fid)
 	_ = pickle.load(fid)
-	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim)
+	loader = dl.DataLoader(opts.dataDirFeat,old_opts.rawDim,old_opts.inputDim, opts.dataDirAli)
 	nn = rnnet.NNet(old_opts.inputDim,old_opts.outputDim,old_opts.layerSize,old_opts.numLayers,
                 old_opts.maxUttLen,temporalLayer=old_opts.temporalLayer,train=False)
 	nn.initParams()

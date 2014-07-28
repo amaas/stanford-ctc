@@ -4,10 +4,18 @@ import os
 import multiprocessing as mp
 
 class DataLoader:
-    def __init__(self,filedir,rawsize,imgsize):
-        self.filedir = filedir
+    def __init__(self,filedir_feat,rawsize,imgsize,filedir_ali=None):
+        """
+        filedir_feat: directory for feature and key files
+        filedir_ali: directory for alignment files. Assumed same as filedir if not given
+        """
+        self.filedir_feat = filedir_feat
         self.rawsize = rawsize
         self.imgsize = imgsize
+        if filedir_ali is None:
+            self.filedir_ali = filedir_feat
+        else:
+            self.filedir_ali = filedir_ali
 
     def getDataAsynch(self):
         assert self.p is not None, "Error in order of asynch calls."
@@ -27,9 +35,9 @@ class DataLoader:
 
     def loadDataFile(self,filenum):
     
-        keyfile = self.filedir+'keys%d.txt'%filenum
-        alisfile = self.filedir+'alis%d.txt'%filenum
-        datafile = self.filedir+'feats%d.bin'%filenum
+        keyfile = self.filedir_feat+'keys%d.txt'%filenum
+        alisfile = self.filedir_ali+'alis%d.txt'%filenum
+        datafile = self.filedir_feat+'feats%d.bin'%filenum
 
         keys = None
         sizes = None
