@@ -3,6 +3,7 @@ import ctc_fast as ctc
 import numpy as np
 import numpy.linalg as nl
 import pdb
+import prefixTree 
 
 class NNet:
 
@@ -21,6 +22,10 @@ class NNet:
 
         if not self.train:
             np.seterr(all='ignore')
+            print "Loading prefix tree..."
+            self.pt = prefixTree.loadPrefixTree()
+            print "Done loading prefix tree."
+            
 
         if temporalLayer <= 0 or temporalLayer >= numLayers:
             self.temporalLayer = -1
@@ -164,7 +169,8 @@ class NNet:
             if returnProbs:
                 return self.probs.numpy_array
             else:
-                return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+                return ctc.decode_dict(np.log(self.probs.numpy_array.astype(np.float64)),self.pt)
+                #return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
 
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
