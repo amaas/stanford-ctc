@@ -4,8 +4,9 @@ import cPickle as pickle
 import cudamat as cm
 
 import sgd
-import brnnet as rnnet
+import nnets.brnnet as rnnet
 import dataLoader as dl
+import pdb
 
 def run(args=None):
     usage = "usage : %prog [options]"
@@ -30,10 +31,8 @@ def run(args=None):
 	    help="Sets (learning rate := learning rate / anneal) after each epoch.")
 
     # Data
-    parser.add_option("--dataDirFeat",dest="dataDirFeat",type="string",
+    parser.add_option("--dataDir",dest="dataDir",type="string",
 	    default="/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
-    parser.add_option("--dataDirAli",dest="dataDirAli",type="string", default="")
-
     parser.add_option("--numFiles",dest="numFiles",type="int",default=384)
     parser.add_option("--inputDim",dest="inputDim",type="int",default=41*15)
     parser.add_option("--rawDim",dest="rawDim",type="int",default=41*15)
@@ -59,9 +58,8 @@ def run(args=None):
     if opts.test:
 	test(opts)
 	return
-    if opts.dataDirAli == "":
-        opts.dataDirAli = opts.dataDirFeat
-    loader = dl.DataLoader(opts.dataDirFeat,opts.rawDim,opts.inputDim,opts.dataDirAli)
+	
+    loader = dl.DataLoader(opts.dataDir,opts.rawDim,opts.inputDim)
 
     nn = rnnet.NNet(opts.inputDim,opts.outputDim,opts.layerSize,opts.numLayers,
                 opts.maxUttLen,temporalLayer=opts.temporalLayer)
@@ -79,9 +77,14 @@ def run(args=None):
     # Training
     import time
     for _ in range(opts.epochs):
-	for i in np.random.permutation(opts.numFiles)+1:
+        perm = np.random.permutation(opts.numFiles)+1
+        loader.loadDataFileAsynch(perm[0])
+        for i in xrange(perm.shape[0]):
             start = time.time()
-            data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
+            data_dict,alis,keys,sizes = loader.getDataAsynch()
+            # Prefetch
+            if i + 1 < perm.shape[0]:
+                loader.loadDataFileAsynch(perm[i+1])
             SGD.run(data_dict,alis,keys,sizes)
             end = time.time()
             print "File time %f"%(end-start)
@@ -99,37 +102,61 @@ def test(opts):
 
     print "Testing model %s"%opts.inFile
 
-    phone_map = get_char_map(opts.dataDirAli)
+    phone_map = get_char_map(opts.dataDir)
 
     with open(opts.inFile,'r') as fid:
 	old_opts = pickle.load(fid)
 	_ = pickle.load(fid)
-	loader = dl.DataLoader(opts.dataDirFeat,old_opts.rawDim,old_opts.inputDim, opts.dataDirAli)
+	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim)
 	nn = rnnet.NNet(old_opts.inputDim,old_opts.outputDim,old_opts.layerSize,old_opts.numLayers,
-                old_opts.maxUttLen,temporalLayer=old_opts.temporalLayer,train=False)
+                opts.maxUttLen,temporalLayer=old_opts.temporalLayer,train=False)
 	nn.initParams()
 	nn.fromFile(fid)
 
     totdist = numphones = 0
-
     lengthsH = []
     lengthsR = []
+    scoresH = []
+    scoresR = []
     fid = open('hyp.txt','w')
+
     for i in range(1,opts.numFiles+1):
 	data_dict,alis,keys,sizes = loader.loadDataFileDict(i)
-	for k in keys:
-	    hyp = nn.costAndGrad(data_dict[k])
+        for k in keys:
+            labels = np.array(alis[k],dtype=np.int32)
+            # Build sentence for lm
+            sentence = []
+            ref = []
+            word = ""
+            for a in labels:
+                token = phone_map[a]
+                ref.append(token)
+                if token != "[space]":
+                    word += token 
+                else:
+                    sentence.append(word)
+                    word = ""
+	    #ref = [phone_map[int(r)] for r in alis[k]]
+	    hyp,hypscore,truescore = nn.costAndGrad(data_dict[k],labels=labels, sentence=sentence)
 	    hyp = [phone_map[h] for h in hyp]
-	    ref = [phone_map[int(r)] for r in alis[k]]
             lengthsH.append(float(len(hyp)))
             lengthsR.append(float(len(ref)))
+            scoresH.append(hypscore)
+            scoresR.append(truescore)
+            print "Ref score %f"%(truescore)
 	    dist,ins,dels,subs,corr = ed.edit_distance(ref,hyp)
-	    print "Distance %d/%d"%(dist,len(ref))
+	    print "Distance %d/%d, HYP Score %f, Ref Score %f"%(dist,len(ref),hypscore,truescore)
 	    fid.write(k+' '+' '.join(hyp)+'\n')
 	    totdist += dist
 	    numphones += len(alis[k])
+            
 
+    print "Avg ref score %f"%(sum(scoresR)/len(scoresR))
+    print "Avg hyp score %f, Avg ref score %f"%(sum(scoresH)/len(scoresH),sum(scoresR)/len(scoresR))
     fid.close()
+    with open("scores.bin",'w') as fid2:
+        pickle.dump(scoresH,fid2)
+        pickle.dump(scoresR,fid2)
     print "Average Lengths HYP: %f REF: %f"%(np.mean(lengthsH),np.mean(lengthsR))
     print "CER : %f"%(100*totdist/float(numphones))
 

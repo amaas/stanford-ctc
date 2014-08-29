@@ -1,9 +1,9 @@
 import cudamat as cm
-import ctc_fast as ctc
+import ctc.ctc_fast as ctc
 import numpy as np
 import numpy.linalg as nl
 import pdb
-import prefixTree 
+import ctc.prefixTree as prefixTree
 
 class NNet:
 
@@ -22,8 +22,9 @@ class NNet:
 
         if not self.train:
             np.seterr(all='ignore')
-            print "Loading prefix tree..."
+            print "Loading prefix tree (this can take a while)..."
             self.pt = prefixTree.loadPrefixTree()
+            self.lm = self.pt.lm
             print "Done loading prefix tree."
             
 
@@ -111,7 +112,7 @@ class NNet:
                 self.deltasFor = self.deltasFor_M.get_col_slice(0,batchSize)
                 self.deltasBack = self.deltasBack_M.get_col_slice(0,batchSize)
 
-    def costAndGrad(self,data,labels=None,returnProbs=False):
+    def costAndGrad(self,data,labels=None,returnProbs=False,sentence=None):
         
         T = data.shape[1]
         self.setViews(T)
@@ -166,12 +167,19 @@ class NNet:
 
         self.probs.copy_to_host()
         if not self.train: 
+            probs = self.probs.numpy_array
             if returnProbs:
-                return self.probs.numpy_array
+                return probs 
             else:
-                return ctc.decode_dict(np.log(self.probs.numpy_array.astype(np.float64)),self.pt)
-                #return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
-
+                probs = np.log(probs.astype(np.float64))
+                refScore = ctc.score_sentence(probs,labels)
+                alpha = 1.0 
+                beta = 2.0
+                #refScore += alpha*self.lm.score_tg(" ".join(sentence)) + beta*len(sentence)
+                #hyp,hypScore = ctc.decode_tg_lm(probs,self.pt,self.lm,beam=100,alpha=alpha,beta=beta)
+                #hyp, hypScore = ctc.decode_dict(probs,self.pt,beam=30)
+                hyp,hypScore = ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+                return hyp,hypScore,refScore
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)
