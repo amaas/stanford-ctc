@@ -1,9 +1,10 @@
 import cudamat as cm
-import ctc.ctc_fast as ctc
+import ctc_fast as ctc
 import numpy as np
 import numpy.linalg as nl
 import pdb
-import ctc.prefixTree as prefixTree
+import prefixTree
+import decoder
 
 class NNet:
 
@@ -172,13 +173,17 @@ class NNet:
                 return probs 
             else:
                 probs = np.log(probs.astype(np.float64))
-                refScore = ctc.score_sentence(probs,labels)
+                #refScore = ctc.score_sentence(probs,labels)
                 alpha = 1.0 
                 beta = 2.0
                 #refScore += alpha*self.lm.score_tg(" ".join(sentence)) + beta*len(sentence)
+                refScore = None
                 #hyp,hypScore = ctc.decode_tg_lm(probs,self.pt,self.lm,beam=100,alpha=alpha,beta=beta)
                 #hyp, hypScore = ctc.decode_dict(probs,self.pt,beam=30)
-                hyp,hypScore = ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+                #hyp = ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
+                #hypScore = None
+
+                hyp, hypScore = decoder.decode_bg_lm(probs,self.pt,self.lm,beam=400,alpha=alpha,beta=beta)
                 return hyp,hypScore,refScore
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),

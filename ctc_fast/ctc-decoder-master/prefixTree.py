@@ -1,45 +1,35 @@
-
 import imp
 import sys
 import collections
+from decoder_config import LM_SOURCE, CHARMAP_PATH, SPACE,\
+        SPECIALS_LIST, LM_PREFIX, LM_ARPA_FILE
 
-lmSource = "py-arpa-lm/lm.py"
-
-## SWBD
-dataset = "path-to-charmap"
-space = "[space]"
-specialsList = ["[vocalized-noise]","[laughter]","[space]","[noise]"]
-
-## WSJ
-#dataset = "path-to-charmap"
-#space = "<SPACE>"
-#specialsList = ["<SPACE>","<NOISE>"]
 
 def load_chars():
-    with open(dataset+'chars.txt') as fid:
+    with open(CHARMAP_PATH+'chars.txt') as fid:
         chars = dict(tuple(l.strip().split()) for l in fid.readlines())
     for k,v in chars.iteritems():
         chars[k] = int(v)
     return chars
 
 def load_words():
-    with open(dataset+'wordlist') as fid:
+    with open(CHARMAP_PATH+'wordlist') as fid:
         words = [l.strip() for l in fid.readlines()]
     return words
 
 def scrub():
     words = load_words()
     chars = load_chars()
-    fid = open(dataset+'wordlist','w')
-    specials = set(specialsList)
+    fid = open(CHARMAP_PATH+'wordlist','w')
+    specials = set(SPECIALS_LIST)
     for word in words:
         if word in specials:
             continue
         skip = False
         for t in word:
-            # ignore words with bad symbols 
+            # ignore words with bad symbols
             if t not in chars.keys():
-                print word 
+                print word
                 skip = True
                 break
         if not skip:
@@ -51,18 +41,18 @@ class Node:
         self.isPrefix = False
         self.isWord = False
         self.children = None
-        
+
 class PrefixTree:
 
     def __init__(self,chars,words,lm):
-        specials = set(specialsList)
+        specials = set(SPECIALS_LIST)
         self.lm = lm
         self.chars = chars
         self.root = Node()
         self.root.isPrefix = True
-        self.space = self.chars[space]
+        self.space = self.chars[SPACE]
         self.nodeFn = lambda : Node()
-        self.root.children = collections.defaultdict(self.nodeFn) 
+        self.root.children = collections.defaultdict(self.nodeFn)
         for word in list(specials):
             node = self.root.children[self.chars[word]]
             node.isWord = True
@@ -76,13 +66,13 @@ class PrefixTree:
             self.addPath(word,self.root,lm.get_word_id(word))
             count += 1
         print
-            
+
 
     def addPath(self,prefix,node,wordId):
         p,rest = prefix[0],prefix[1:]
 
         if node.children is None:
-            node.children = collections.defaultdict(self.nodeFn) 
+            node.children = collections.defaultdict(self.nodeFn)
         next = node.children[self.chars[p]]
         if len(rest)==0:
             next.isWord = True
@@ -94,13 +84,13 @@ class PrefixTree:
 
 def load_and_pickle_lm():
     import cPickle as pickle
-    lmMod = imp.load_source('lm',lmSource)
-    lm = lmMod.LM(arpafile=dataset+'lm_tg.arpa')
-    lm.to_file(dataset+"lm_tg.bin")
+    lmMod = imp.load_source('lm', LM_SOURCE)
+    lm = lmMod.LM(arpafile=LM_ARPA_FILE)
+    lm.to_file(os.path.split_exit(LM_ARPA_FILE)[0] + '.bin')
 
 def load_lm():
-    lmMod = imp.load_source('lm',lmSource)
-    lm = lmMod.LM(arpafile=dataset+'lm_tg.arpa')
+    lmMod = imp.load_source('lm', LM_SOURCE)
+    lm = lmMod.LM(arpafile=LM_ARPA_FILE)
     return lm
 
 def loadPrefixTree():
