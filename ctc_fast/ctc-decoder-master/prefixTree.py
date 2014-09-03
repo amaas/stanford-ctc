@@ -10,11 +10,13 @@ def load_chars():
         chars = dict(tuple(l.strip().split()) for l in fid.readlines())
     for k,v in chars.iteritems():
         chars[k] = int(v)
+    print chars
     return chars
 
 def load_words():
     with open(CHARMAP_PATH+'wordlist') as fid:
         words = [l.strip() for l in fid.readlines()]
+    print 'Loaded %d words' % len(words)
     return words
 
 def scrub():
@@ -46,6 +48,7 @@ class PrefixTree:
 
     def __init__(self,chars,words,lm):
         specials = set(SPECIALS_LIST)
+        self.path_count = 0
         self.lm = lm
         self.chars = chars
         self.root = Node()
@@ -65,10 +68,10 @@ class PrefixTree:
                 sys.stdout.flush()
             self.addPath(word,self.root,lm.get_word_id(word))
             count += 1
-        print
 
 
     def addPath(self,prefix,node,wordId):
+        self.path_count += 1
         p,rest = prefix[0],prefix[1:]
 
         if node.children is None:
@@ -101,3 +104,4 @@ def loadPrefixTree():
 
 if __name__=='__main__':
     pt = loadPrefixTree()
+    print 'Added %d prefix paths' % pt.path_count

@@ -5,6 +5,8 @@ import numpy.linalg as nl
 import pdb
 import prefixTree
 import decoder
+#import slowDecoder as decoder
+from fastdecode import decode_lm_wrapper
 
 class NNet:
 
@@ -173,6 +175,7 @@ class NNet:
                 return probs 
             else:
                 probs = np.log(probs.astype(np.float64))
+                print probs.shape
                 #refScore = ctc.score_sentence(probs,labels)
                 alpha = 1.0 
                 beta = 2.0
@@ -183,7 +186,18 @@ class NNet:
                 #hyp = ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
                 #hypScore = None
 
-                hyp, hypScore = decoder.decode_bg_lm(probs,self.pt,self.lm,beam=400,alpha=alpha,beta=beta)
+                #hyp, hypScore = decoder.decode_bg_lm(probs,self.pt,self.lm,beam=400,alpha=alpha,beta=beta)
+                #decode_lm_wrapper(probs, 3, alpha, beta)
+                #stop
+
+                import kenlm
+                clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/data/local/lm/text_char.2g.arpa')
+                int_char_map = dict((v, k) for k, v in self.pt.chars.iteritems())
+                # FIXME
+                int_char_map[221] = '<s>'
+                hyp, hypScore = decoder.decode_bg_clm(probs, self.lm, clm,
+                        int_char_map, beam=400, alpha=alpha, beta=beta)
+
                 return hyp,hypScore,refScore
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
