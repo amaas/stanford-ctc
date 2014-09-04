@@ -3,13 +3,13 @@ from os.path import join as pjoin
 
 EGS_DIR = '/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs'
 
-DATASET = 'swbd'
+DATASET = 'wsj'
 
 # CTC Parameters
 
 if DATASET == 'wsj':
-    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
-    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
+    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
+    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
     INPUT_DIM = 21*23
     RAW_DIM = 41*23
     OUTPUT_DIM = 32  # FIXME
@@ -34,7 +34,7 @@ elif DATASET == 'swbd':
     SPECIALS_LIST = ['[vocalized-noise]','[laughter]','[space]','[noise]']
     CHARMAP_PATH = pjoin(EGS_DIR, 'swbd/s5b/ctc-utils/')
 
-USE_TRIGRAM = True
+USE_TRIGRAM = False
 if USE_TRIGRAM:
     LM_PREFIX = 'lm_tg'
 else:

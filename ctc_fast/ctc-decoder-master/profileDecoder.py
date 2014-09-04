@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
 import dataLoader as dl
+from prefixTree import load_chars
 from brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
@@ -11,9 +12,7 @@ from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
 def load_data():
     loader = dl.DataLoader(DATA_DIR, RAW_DIM, INPUT_DIM)
     data_dict, alis, keys, _ = loader.loadDataFileDict(1)
-    data, labels = data_dict[keys[3]], np.array(alis[keys[3]], dtype=np.int32)
-    #data = data_dict[keys[3]]
-    return data, labels
+    return data_dict, alis, keys
 
 
 def load_nnet():
@@ -28,8 +27,8 @@ def load_nnet():
     return rnn
 
 
-def int_to_char(int_seq, prefix_tree):
-    char_map = dict((v, k) for k, v in prefix_tree.chars.iteritems())
+def int_to_char(int_seq, chars):
+    char_map = dict((v, k) for k, v in chars.iteritems())
     return [char_map[i] for i in int_seq]
 
 
@@ -39,7 +38,7 @@ def char_seq_to_string(char_seq):
 
 if __name__ == '__main__':
     print 'Loading data'
-    data, labels = load_data()
+    data_dict, alis, keys = load_data()
     print 'Loading neural net'
     # NOTE Net loads prefix tree and LM
     rnn = load_nnet()
@@ -54,13 +53,17 @@ if __name__ == '__main__':
     s.strip_dirs().sort_stats('time').print_stats()
     '''
 
-    print 'Computing likelihoods'
-    hyp, hypScore, refScore = rnn.costAndGrad(data, labels)
+    for k in range(10):
+        data, labels = data_dict[keys[k]], np.array(alis[keys[k]],
+                dtype=np.int32)
 
-    print '-' * 80
-    if labels is not None:
-        print 'labels:', char_seq_to_string(int_to_char(labels, rnn.pt))
-    prefix = int_to_char(hyp, rnn.pt)
-    print 'top hyp:', char_seq_to_string(prefix)
-    print 'score:', hypScore
-    print 'ref score:', refScore
+        hyp, hypScore, refScore = rnn.costAndGrad(data, labels)
+
+        print '-' * 80
+        chars = load_chars()
+        if labels is not None:
+            print 'labels:', char_seq_to_string(int_to_char(labels, rnn.pt))
+        prefix = int_to_char(hyp, rnn.pt)
+        print 'top hyp:', char_seq_to_string(prefix)
+        print 'score:', hypScore
+        #print 'ref score:', refScore

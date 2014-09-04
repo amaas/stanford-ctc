@@ -10,7 +10,6 @@ def load_chars():
         chars = dict(tuple(l.strip().split()) for l in fid.readlines())
     for k,v in chars.iteritems():
         chars[k] = int(v)
-    print chars
     return chars
 
 def load_words():
