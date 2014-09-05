@@ -42,6 +42,7 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, method='clm'):
     probs = rnn.costAndGrad(data, labels)
     probs = np.log(probs.astype(np.float64))
 
+    hypScore = None
     refScore = None
     # TODO Couldn't find score_sentence
     #refScore = ctc.score_sentence(probs,labels)
