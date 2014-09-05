@@ -3,10 +3,6 @@ import ctc_fast as ctc
 import numpy as np
 import numpy.linalg as nl
 import pdb
-import prefixTree
-import decoder
-#import slowDecoder as decoder
-from fastdecode import decode_lm_wrapper
 
 class NNet:
 
@@ -25,12 +21,6 @@ class NNet:
 
         if not self.train:
             np.seterr(all='ignore')
-            print "Loading prefix tree (this can take a while)..."
-            self.pt = prefixTree.loadPrefixTree()
-            self.lm = self.pt.lm
-            print "Done loading prefix tree."
-            
-
         if temporalLayer <= 0 or temporalLayer >= numLayers:
             self.temporalLayer = -1
         else:
@@ -115,7 +105,7 @@ class NNet:
                 self.deltasFor = self.deltasFor_M.get_col_slice(0,batchSize)
                 self.deltasBack = self.deltasBack_M.get_col_slice(0,batchSize)
 
-    def costAndGrad(self,data,labels=None,returnProbs=False,sentence=None):
+    def costAndGrad(self,data,labels=None, sentence=None):
         
         T = data.shape[1]
         self.setViews(T)
@@ -171,34 +161,7 @@ class NNet:
         self.probs.copy_to_host()
         if not self.train: 
             probs = self.probs.numpy_array
-            if returnProbs:
-                return probs 
-            else:
-                probs = np.log(probs.astype(np.float64))
-                print probs.shape
-                #refScore = ctc.score_sentence(probs,labels)
-                alpha = 1.0 
-                beta = 2.0
-                #refScore += alpha*self.lm.score_tg(" ".join(sentence)) + beta*len(sentence)
-                refScore = None
-                #hyp,hypScore = ctc.decode_tg_lm(probs,self.pt,self.lm,beam=100,alpha=alpha,beta=beta)
-                #hyp, hypScore = ctc.decode_dict(probs,self.pt,beam=30)
-                #hyp = ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
-                #hypScore = None
-
-                #hyp, hypScore = decoder.decode_bg_lm(probs,self.pt,self.lm,beam=400,alpha=alpha,beta=beta)
-                #decode_lm_wrapper(probs, 3, alpha, beta)
-                #stop
-
-                import kenlm
-                clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/data/local/lm/text_char.2g.arpa')
-                int_char_map = dict((v, k) for k, v in self.pt.chars.iteritems())
-                # FIXME
-                int_char_map[221] = '<s>'
-                hyp, hypScore = decoder.decode_bg_clm(probs, self.lm, clm,
-                        int_char_map, beam=400, alpha=alpha, beta=beta)
-
-                return hyp,hypScore,refScore
+            return probs
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)

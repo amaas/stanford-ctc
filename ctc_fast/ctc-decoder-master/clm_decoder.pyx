@@ -1,5 +1,4 @@
-# cython: profile=False, boundscheck=True, wraparound=False
-# TODO Turn off boundscheck
+# cython: profile=False, boundscheck=False, wraparound=False
 
 from libc cimport math
 import numpy as np
@@ -28,7 +27,7 @@ cdef double exp_sum_log(double a, double b):
 cdef double lm_placeholder(c, seq):
     return 0.0
 
-def decode_bg_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double alpha=1.0, double beta=0.0):
+def decode_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double alpha=1.0, double beta=0.0):
     cdef unsigned int N = probs.shape[0]
     cdef unsigned int T = probs.shape[1]
     cdef unsigned int t, k, l, y_e
