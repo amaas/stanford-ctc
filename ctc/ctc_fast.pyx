@@ -157,8 +157,6 @@ def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
     Computes best path given sequence of probability distributions per frame.
     Simply chooses most likely label at each timestep then collapses result to
     remove blanks and repeats.
-    Optionally computes edit distance between reference transcription
-    and best path if reference provided.
     """
 
     # Compute best path
@@ -179,4 +177,3 @@ def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
         else:
             hyp.append(b)
     return hyp
-

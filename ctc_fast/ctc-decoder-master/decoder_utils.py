@@ -1,14 +1,29 @@
+import time
 import numpy as np
 import pickle
 import dataLoader as dl
 from brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
-        DATA_DIR, SPACE
+        DATA_DIR, SPACE, CHARMAP_PATH
 import decoder
 import clm_decoder
 import ctc_fast as ctc
-import prefixTree
+
+
+def load_chars():
+    with open(CHARMAP_PATH+'chars.txt') as fid:
+        chars = dict(tuple(l.strip().split()) for l in fid.readlines())
+    for k, v in chars.iteritems():
+        chars[k] = int(v)
+    return chars
+
+
+def load_words():
+    with open(CHARMAP_PATH+'wordlist') as fid:
+        words = [l.strip() for l in fid.readlines()]
+    print 'Loaded %d words' % len(words)
+    return words
 
 
 def load_data(fnum=1):
@@ -38,7 +53,7 @@ def collapse_seq(char_seq):
     return ''.join([' ' if c == SPACE else c for c in char_seq])
 
 
-def decode(data, labels, rnn, alpha=1.0, beta=0.0, method='clm'):
+def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
     probs = rnn.costAndGrad(data, labels)
     probs = np.log(probs.astype(np.float64))
 
@@ -57,20 +72,24 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, method='clm'):
         # Bigram LM w/ prefix tree dictionary constraint
         # FIXME Prefix tree + lm loading should be moved out
         print 'Loading prefix tree (this can take a while)...'
+        import prefixTree
         pt = prefixTree.loadPrefixTree()
         lm = pt.lm
         print 'Done loading prefix tree.'
-        hyp, hypScore = decoder.decode_bg_lm(probs, pt, lm, beam=400,
+        tic = time.time()
+        hyp, hypScore = decoder.decode_bg_lm(probs, pt, lm, beam=beam,
                 alpha=alpha, beta=beta)
+        toc = time.time()
+        print 'decoding time (wall): %f' % (toc - tic)
     elif method == 'clm':
         # Character LM
         clm = None
-        hyp, hypScore = clm_decoder.decode_clm(probs, clm, beam=40,
+        hyp, hypScore = clm_decoder.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'fast':
         # TODO Fix bugs in fastdecode
         from fastdecode import decode_lm_wrapper
-        decode_lm_wrapper(probs, 3, alpha, beta)
+        hyp, hypScore = decode_lm_wrapper(probs, beam, alpha, beta)
     else:
         assert False, 'No such decoding method %s' % method
 

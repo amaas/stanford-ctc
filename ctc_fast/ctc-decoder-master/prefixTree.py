@@ -3,20 +3,8 @@ import sys
 import collections
 from decoder_config import LM_SOURCE, CHARMAP_PATH, SPACE,\
         SPECIALS_LIST, LM_PREFIX, LM_ARPA_FILE
+from decoder_utils import load_chars, load_words
 
-
-def load_chars():
-    with open(CHARMAP_PATH+'chars.txt') as fid:
-        chars = dict(tuple(l.strip().split()) for l in fid.readlines())
-    for k,v in chars.iteritems():
-        chars[k] = int(v)
-    return chars
-
-def load_words():
-    with open(CHARMAP_PATH+'wordlist') as fid:
-        words = [l.strip() for l in fid.readlines()]
-    print 'Loaded %d words' % len(words)
-    return words
 
 def scrub():
     words = load_words()
