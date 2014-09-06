@@ -177,7 +177,7 @@ py::tuple decode_lm_wrapper(np::array probs, int beam, double alpha, double beta
     unsigned int T = py::extract<unsigned int>(shape[1]);
     std::cout << N << "x" << T << " probs" << std::endl;
 
-    // Convert probs to double array, row-major
+    // Convert probs to double array, col-major
     double* data = static_cast<double*>(PyArray_DATA(probs.ptr()));
 
     // Write data for profiling in another script
