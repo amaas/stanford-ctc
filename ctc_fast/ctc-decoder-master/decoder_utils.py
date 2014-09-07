@@ -7,7 +7,6 @@ from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
         DATA_DIR, SPACE, CHARMAP_PATH
 import decoder
-import clm_decoder
 import ctc_fast as ctc
 
 
@@ -55,7 +54,7 @@ def collapse_seq(char_seq):
 
 def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
     probs = rnn.costAndGrad(data, labels)
-    probs = np.log(probs.astype(np.float64))
+    probs = np.log(probs.astype(np.float64) + 1e-30)
 
     hypScore = None
     refScore = None
@@ -82,15 +81,22 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
         toc = time.time()
         print 'decoding time (wall): %f' % (toc - tic)
     elif method == 'clm':
+        import clm_decoder
         # Character LM
         clm = None
         hyp, hypScore = clm_decoder.decode_clm(probs, clm, beam=beam,
+                alpha=alpha, beta=beta)
+    elif method == 'clm2':
+        import clm_decoder2
+        # Character LM
+        clm = None
+        hyp, hypScore = clm_decoder2.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'fast':
         # TODO Fix bugs in fastdecode
         from fastdecode import decode_lm_wrapper
         hyp, hypScore = decode_lm_wrapper(probs, beam, alpha, beta)
     else:
-        assert False, 'No such decoding method %s' % method
+        assert False, 'No such decoding method: %s' % method
 
     return hyp, hypScore, refScore

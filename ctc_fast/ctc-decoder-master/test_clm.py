@@ -14,7 +14,7 @@ if __name__ == '__main__':
                 dtype=np.int32)
 
         hyp, hypScore, refscore = decode(data, labels, rnn,
-                alpha=1.0, beta=0.0, beam=10, method='clm')
+                alpha=0.0, beta=0.0, beam=40, method='clm2')
         hyp_pmax, _, _ = decode(data, labels, rnn,
                 alpha=1.0, beta=0.0, method='pmax')
 

@@ -1,10 +1,12 @@
 # cython: profile=False, boundscheck=False, wraparound=False
 
+import sys
 from libc cimport math
 import numpy as np
 cimport numpy as np
 np.seterr(all='raise')
 import collections
+from decoder_utils import int_to_char, load_chars
 
 class Hyp:
     def __init__(self, pb, pnb, nc):
@@ -24,6 +26,7 @@ cdef double exp_sum_log(double a, double b):
         return float('-inf')
     return math.log(psum)
 
+# TODO Need id -> char mapping
 cdef double lm_placeholder(c, seq):
     return 0.0
 
@@ -36,41 +39,55 @@ def decode_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double al
     # Need beta to be in scope
     pref_prob = lambda x: exp_sum_log(x[1].p_nb, x[1].p_b) + beta * x[1].n_c
 
+    chars = load_chars()
+
+    # For values not on the beam
+    B_old = collections.defaultdict(init_hyp)
+
     # Loop over time
     for t in xrange(T):
-        #print '%d/%d' % (t, T)
-
-        # Beam cutoff
         if t == 0:
             B_hat = dict()
             # Initial empty prefix
             B_hat[()] = Hyp(0.0, float('-inf'), 0)
         else:
-            B_hat = dict(sorted(B.iteritems(), key=pref_prob, reverse=True)[:beam])
+            # Beam cutoff
+            sorted_items = sorted(B.iteritems(), key=pref_prob, reverse=True)
+            print t
+            print '-' * 80
+            for kv in sorted_items[:beam]:
+                print int_to_char(kv[0], chars)
+            B_old = B
+            B_hat = dict(sorted_items[:beam])
+            if t >= 100:
+                sys.exit(0)
         B = collections.defaultdict(init_hyp)
 
         # Loop over prefixes
         for prefix, hyp in B_hat.iteritems():
-            l = len(prefix)
+            l = hyp.n_c
             p_tot = exp_sum_log(hyp.p_b, hyp.p_nb)
 
             new_hyp = B[prefix]
+            new_hyp.n_c = hyp.n_c
             # Handle collapsing
             if l > 0:
                 new_hyp.p_nb = hyp.p_nb + probs[prefix[l-1], t]
                 prev_pref = prefix[:l-1]
                 if prev_pref in B_hat:
                     prev_hyp = B_hat[prev_pref]
+                else:
+                    prev_hyp = B_old[prev_pref]
 
-                    y_e = prefix[l-1]
-                    # P(y[-1], y[:-1], t) in Graves paper
-                    collapse_prob = probs[y_e, t] + lm_placeholder(y_e, prev_pref)
-                    if l > 1 and y_e == prefix[l-2]:
-                        collapse_prob += prev_hyp.p_b
-                    else:
-                        collapse_prob += exp_sum_log(prev_hyp.p_b, prev_hyp.p_nb)
+                y_e = prefix[l-1]
+                # P(y[-1], y[:-1], t) in Graves paper
+                collapse_prob = probs[y_e, t] + alpha * lm_placeholder(y_e, prev_pref)
+                if l > 1 and y_e == prefix[l-2]:
+                    collapse_prob += prev_hyp.p_b
+                else:
+                    collapse_prob += exp_sum_log(prev_hyp.p_b, prev_hyp.p_nb)
 
-                    new_hyp.p_nb = exp_sum_log(new_hyp.p_nb, collapse_prob)
+                new_hyp.p_nb = exp_sum_log(new_hyp.p_nb, collapse_prob)
 
             # Handle blank extension
             new_hyp.p_b = p_tot + probs[0, t]
@@ -82,7 +99,7 @@ def decode_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double al
                 ext_hyp = Hyp(float('-inf'), 0.0, hyp.n_c + 1)
 
                 # P(k, y, t) in Graves paper
-                ext_hyp.p_nb = probs[k, t] + lm_placeholder(k, prefix)
+                ext_hyp.p_nb = probs[k, t] + alpha * lm_placeholder(k, prefix)
                 if l > 0 and k == prefix[l-1]:
                     ext_hyp.p_nb += hyp.p_b
                 else:

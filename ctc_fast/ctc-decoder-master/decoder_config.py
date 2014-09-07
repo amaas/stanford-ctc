@@ -8,8 +8,8 @@ DATASET = 'wsj'
 # CTC Parameters
 
 if DATASET == 'wsj':
-    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
-    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
+    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
+    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
     INPUT_DIM = 21*23
     RAW_DIM = 41*23
     OUTPUT_DIM = 32  # FIXME
