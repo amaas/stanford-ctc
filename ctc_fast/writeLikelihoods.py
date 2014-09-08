@@ -25,7 +25,7 @@ def writeUttHeader(fid,key,uttSize,numClasses):
     dat = struct.pack('i',numClasses)
     fid.write(dat)
 
-def writeLogLikes(loader,nn,outDir,fn):
+def writeLogLikes(loader,nn,fn, outDir, writePickle=False):
 
     data_dict,alis,keys,sizes = loader.loadDataFileDict(fn)
 
@@ -43,11 +43,14 @@ def writeLogLikes(loader,nn,outDir,fn):
         probs = np.log(probs + 1e-40)
         probs.T.tofile(fid)
         lik_dict[k] = probs
-
-
-    print "Done with file %d"%fn
     fid.close()
     
+    if writePickle:
+        print "Writing pickle for file %d"%fn
+        with open(outDir+'/loglikelihoods_%d.pk'%fn,'wb') as f:
+            pickle.dump(lik_dict,f)
+
+    print "Done with file %d"%fn
     return lik_dict 
 
 def run(args=None):
@@ -64,13 +67,15 @@ def run(args=None):
 	    default=None,help="Saved model")
     parser.add_option("--outFile",dest="outFile",type="string",
 	    default=None,help="Location to store log likes")
-
+    parser.add_option("--writePickle",action="store_true", dest="writePickle",
+	    default=None,help="flag to write pickle files of likelihoods")
+    
     (opts,args)=parser.parse_args(args)
 
     with open(opts.inFile,'r') as fid:
 	old_opts = pickle.load(fid)
 	_ = pickle.load(fid)
-	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim)
+	loader = dl.DataLoader(opts.dataDir,old_opts.rawDim,old_opts.inputDim,load_ali=False)
 	nn = rnnet.NNet(old_opts.inputDim,old_opts.outputDim,
                 old_opts.layerSize,old_opts.numLayers,opts.maxUttLen,
                 temporalLayer=old_opts.temporalLayer,train=False)
@@ -78,9 +83,7 @@ def run(args=None):
 	nn.fromFile(fid)
 
     for i in range(1,opts.numFiles+1):
-        ll_dict = writeLogLikes(loader,nn,opts.outFile,i)
-        with open('tmp_ll.pk','wb') as f:
-            pickle.dump(ll_dict,f)
+        ll_dict = writeLogLikes(loader,nn,i, opts.outFile,opts.writePickle)
 
 if __name__=='__main__':
     run()
