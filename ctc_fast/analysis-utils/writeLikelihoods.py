@@ -30,7 +30,7 @@ def writeLogLikes(loader,nn,fn, outDir, writePickle=False):
     data_dict,alis,keys,sizes = loader.loadDataFileDict(fn)
 
     fid = open(outDir+'/loglikelihoods%d.ark'%fn,'w')
-    lik_dict = {}
+
     print "Running file %d"%fn
     for i,k in enumerate(keys): 
         assert data_dict[k].shape[1] < nn.maxBatch,\
@@ -39,8 +39,7 @@ def writeLogLikes(loader,nn,fn, outDir, writePickle=False):
         probs = nn.costAndGrad(data_dict[k],returnProbs=True)
         assert probs.dtype==np.float32,"Probs array malformed."
         assert probs.shape[0]==nn.outputDim,"Probs dimensions mismatch."
-        # log while avoiding underflow
-        probs = np.log(probs + 1e-40)
+        probs = np.log(probs)
         probs.T.tofile(fid)
         lik_dict[k] = probs
     fid.close()
@@ -83,7 +82,7 @@ def run(args=None):
 	nn.fromFile(fid)
 
     for i in range(1,opts.numFiles+1):
-        ll_dict = writeLogLikes(loader,nn,i, opts.outFile,opts.writePickle)
+        writeLogLikes(loader,nn,i, opts.outFile,opts.writePickle)
 
 if __name__=='__main__':
     run()

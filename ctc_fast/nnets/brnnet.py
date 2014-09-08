@@ -3,7 +3,6 @@ import ctc_fast as ctc
 import numpy as np
 import numpy.linalg as nl
 import pdb
-import prefixTree 
 
 class NNet:
 
@@ -22,11 +21,6 @@ class NNet:
 
         if not self.train:
             np.seterr(all='ignore')
-            print "Loading prefix tree..."
-            self.pt = prefixTree.loadPrefixTree()
-            print "Done loading prefix tree."
-            
-
         if temporalLayer <= 0 or temporalLayer >= numLayers:
             self.temporalLayer = -1
         else:
@@ -111,7 +105,7 @@ class NNet:
                 self.deltasFor = self.deltasFor_M.get_col_slice(0,batchSize)
                 self.deltasBack = self.deltasBack_M.get_col_slice(0,batchSize)
 
-    def costAndGrad(self,data,labels=None,returnProbs=False):
+    def costAndGrad(self,data,labels=None, sentence=None):
         
         T = data.shape[1]
         self.setViews(T)
@@ -166,12 +160,8 @@ class NNet:
 
         self.probs.copy_to_host()
         if not self.train: 
-            if returnProbs:
-                return self.probs.numpy_array
-            else:
-                return ctc.decode_dict(np.log(self.probs.numpy_array.astype(np.float64)),self.pt)
-                #return ctc.decode_best_path(self.probs.numpy_array.astype(np.float64))
-
+            probs = self.probs.numpy_array
+            return probs
 
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)

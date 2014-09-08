@@ -1,12 +1,11 @@
+# cython: profile=False
 
 from libc cimport math
-import cython
 import numpy as np
 cimport numpy as np
-np.seterr(all='raise') 
+np.seterr(all='raise')
 import collections
 
-ctypedef np.float64_t f_t
 
 cdef double combine(double a,double b,double c=float('-inf')):
     cdef double psum = math.exp(a) + math.exp(b) + math.exp(c)
@@ -14,6 +13,7 @@ cdef double combine(double a,double b,double c=float('-inf')):
         return float('-inf')
     else:
         return math.log(psum)
+
 
 def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
                 unsigned int beam=40, double alpha=1.0, double beta=0.0):
@@ -23,11 +23,12 @@ def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
     cdef unsigned int t, i
     cdef float v0, v1, v2, v3
     cdef unsigned int space = prefixTree.space
-    
-    keyFn = lambda x: combine(x[1][0],x[1][1]) + beta * x[1][4]
-    initFn = lambda : [float('-inf'),float('-inf'),None,None,0]  
 
-    Hcurr = [[(),[float('-inf'),0.0,prefixTree.root,lm.start,0]]] 
+    keyFn = lambda x: combine(x[1][0],x[1][1]) + beta * x[1][4]
+    initFn = lambda : [float('-inf'),float('-inf'),None,None,0]
+
+    # [prefix, [p_nb, p_b, node, lm.start, |W|]]
+    Hcurr = [[(),[float('-inf'),0.0,prefixTree.root,lm.start,0]]]
     Hold = collections.defaultdict(initFn)
 
     # loop over time
@@ -35,7 +36,7 @@ def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
         Hcurr = dict(Hcurr)
         Hnext = collections.defaultdict(initFn)
 
-        for prefix,(v0,v1,node,prevId,numW) in Hcurr.iteritems(): 
+        for prefix,(v0,v1,node,prevId,numW) in Hcurr.iteritems():
 
             valsP = Hnext[prefix]
             valsP[1] = combine(v0+probs[0,t],v1+probs[0,t],valsP[1])
@@ -53,7 +54,7 @@ def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
                     else:
                         skip = True
                 else:
-                    if node.children is not None and (node.children[i].isPrefix 
+                    if node.children is not None and (node.children[i].isPrefix
                             or node.children[i].isWord):
                         newNode = node.children[i]
                     else:
@@ -80,7 +81,7 @@ def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
                     else:
                         valsN[0] = combine(v1+probs[i,t]+bg,valsN[0])
 
-                    if nprefix not in Hcurr: 
+                    if nprefix not in Hcurr:
                         v2,v3,_,_,_ = Hold[nprefix]
                         valsN[1] = combine(v2+probs[0,t],v3+probs[0,t],valsN[1])
                         valsN[0] = combine(v2+probs[i,t],valsN[0])
@@ -92,4 +93,3 @@ def decode_bg_lm(double[::1,:] probs not None, prefixTree, lm,
         Hcurr = sorted(Hnext.iteritems(), key=keyFn, reverse=True)[:beam]
 
     return list(Hcurr[0][0]),keyFn(Hcurr[0])
-
