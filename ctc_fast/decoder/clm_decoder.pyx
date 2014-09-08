@@ -30,6 +30,16 @@ cdef double exp_sum_log(double a, double b):
 cdef double lm_placeholder(c, seq):
     return 0.0
 
+def lm_score_final_char(lm, chars, prefix):
+    """
+    uses lm to score entire prefix
+    returns only the log prob of final char
+    """
+    prefix_str = '<s> ' + ' '.join([chars[x] for x in prefix])
+    print prefix_str,
+    prefix_scores = lm.full_scores(prefix_str)
+    print prefix_scores[-1]
+
 def decode_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double alpha=1.0, double beta=0.0):
     cdef unsigned int N = probs.shape[0]
     cdef unsigned int T = probs.shape[1]
@@ -81,7 +91,10 @@ def decode_clm(double[::1,:] probs not None, lm, unsigned int beam=40, double al
 
                 y_e = prefix[l-1]
                 # P(y[-1], y[:-1], t) in Graves paper
-                collapse_prob = probs[y_e, t] + alpha * lm_placeholder(y_e, prev_pref)
+                # query the LM for final char score
+                lm_val = lm_score_final_char(lm, prefix)
+                # lm_placeholder(y_e, prev_pref)
+                collapse_prob = probs[y_e, t] + alpha * lm_val    
                 if l > 1 and y_e == prefix[l-2]:
                     collapse_prob += prev_hyp.p_b
                 else:

@@ -5,7 +5,7 @@ import numpy as np
 cimport numpy as np
 np.seterr(all='raise')
 import collections
-
+from decoder_utils import int_to_char, load_chars
 
 cdef double combine(double a,double b,double c=float('-inf')):
     cdef double psum = math.exp(a) + math.exp(b) + math.exp(c)
@@ -18,6 +18,25 @@ cdef double combine(double a,double b,double c=float('-inf')):
 cdef double lm_placeholder(c, seq):
     return 0.0
 
+def lm_score_final_char(lm, chars, prefix, query_char):
+    """
+    uses lm to score entire prefix
+    returns only the log prob of final char
+    """
+    # convert prefix and query to actual text
+    # TODO why is prefix a tuple?
+    prefix = list(prefix)
+    #print prefix
+    prefix_str = ' '.join(int_to_char(prefix+[query_char], chars))
+    #print prefix_str
+    prefix_scores = lm.full_scores(prefix_str)
+    words = ['<s>'] + prefix_str.split() + ['</s>']
+    #TODO verify lm is not returning score for </s>
+    prob_list = [x[0] for x in prefix_scores]
+    #for i, (prob, length) in enumerate(prefix_scores):
+    #    print words[i], length, prob
+    return prob_list[-1]
+
 def decode_clm(double[::1,:] probs not None, lm,
                 unsigned int beam=40, double alpha=1.0, double beta=0.0):
 
@@ -25,6 +44,8 @@ def decode_clm(double[::1,:] probs not None, lm,
     cdef unsigned int T = probs.shape[1]
     cdef unsigned int t, i
     cdef float v0, v1, v2, v3
+
+    chars = load_chars()
 
     keyFn = lambda x: combine(x[1][0],x[1][1]) + beta * x[1][2]
     initFn = lambda : [float('-inf'),float('-inf'),0]
@@ -50,7 +71,10 @@ def decode_clm(double[::1,:] probs not None, lm,
                 nprefix = tuple(list(prefix) + [i])
                 valsN = Hnext[nprefix]
 
-                lm_prob = alpha*lm_placeholder(i,prefix)
+                # query the LM for final char score
+                lm_prob = alpha * lm_score_final_char(lm, chars, prefix, i)
+                # lm_prob = alpha*lm_placeholder(i,prefix)
+
                 valsN[2] = numC + 1
 
                 if len(prefix)==0 or (len(prefix) > 0 and i != prefix[-1]):
