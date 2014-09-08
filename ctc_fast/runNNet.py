@@ -150,8 +150,10 @@ def test(opts):
             #ref = [phone_map[int(r)] for r in alis[k]]
 
             #hyp,hypscore,truescore = nn.costAndGrad(data_dict[k],labels=labels, sentence=sentence)
-            hyp, hypscore, truescore = decode(
-                data_dict[k], labels, nn, alpha=0.0, beta=0.0, beam=40, method='clm2')
+            probs = nn.costAndGrad(data_dict[k], labels)
+            probs = np.log(probs.astype(np.float64) + 1e-30)
+            hyp, hypscore, truescore = decode(probs,
+                    alpha=0.0, beta=0.0, beam=40, method='clm2')
             if truescore is None:
                 truescore = 0.0
             if hypscore is None:

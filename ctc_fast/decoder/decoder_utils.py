@@ -55,9 +55,7 @@ def collapse_seq(char_seq):
     return ''.join([' ' if c == SPACE else c for c in char_seq])
 
 
-def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
-    probs = rnn.costAndGrad(data, labels)
-    probs = np.log(probs.astype(np.float64) + 1e-30)
+def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm'):
 
     hypScore = None
     refScore = None
@@ -72,7 +70,6 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
         hyp = ctc.decode_best_path(probs)
     elif method == 'bg':
         # Bigram LM w/ prefix tree dictionary constraint
-        # FIXME Prefix tree + lm loading should be moved out
         print 'Loading prefix tree (this can take a while)...'
         import prefixTree
         pt = prefixTree.loadPrefixTree()
@@ -98,7 +95,6 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
         hyp, hypScore = clm_decoder2.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'fast':
-        # TODO Fix bugs in fastdecode
         from fastdecode import decode_lm_wrapper
         hyp, hypScore = decode_lm_wrapper(probs, beam, alpha, beta)
     else:

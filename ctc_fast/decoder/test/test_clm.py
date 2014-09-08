@@ -13,9 +13,12 @@ if __name__ == '__main__':
         data, labels = data_dict[keys[k]], np.array(alis[keys[k]],
                 dtype=np.int32)
 
-        hyp, hypScore, refscore = decode(data, labels, rnn,
+        probs = rnn.costAndGrad(data, labels)
+        probs = np.log(probs.astype(np.float64) + 1e-30)
+
+        hyp, hypScore, refscore = decode(probs,
                 alpha=0.0, beta=0.0, beam=40, method='clm2')
-        hyp_pmax, _, _ = decode(data, labels, rnn,
+        hyp_pmax, _, _ = decode(probs,
                 alpha=1.0, beta=0.0, method='pmax')
 
         chars = load_chars()
