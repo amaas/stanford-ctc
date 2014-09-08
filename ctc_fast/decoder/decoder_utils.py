@@ -2,12 +2,14 @@ import time
 import numpy as np
 import pickle
 import dataLoader as dl
-from brnnet import NNet as BRNNet
+from nnets.brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
         DATA_DIR, SPACE, CHARMAP_PATH
 import decoder
 import ctc_fast as ctc
+# char lm
+import kenlm
 
 
 def load_chars():
@@ -15,6 +17,7 @@ def load_chars():
         chars = dict(tuple(l.strip().split()) for l in fid.readlines())
     for k, v in chars.iteritems():
         chars[k] = int(v)
+    print chars
     return chars
 
 
@@ -83,13 +86,15 @@ def decode(data, labels, rnn, alpha=1.0, beta=0.0, beam=100, method='clm'):
     elif method == 'clm':
         import clm_decoder
         # Character LM
-        clm = None
+        # NOTE need to restructure decoders into classes
+        clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/amaas/kaldi-stanford/kaldi-trunk/egs/wsj/s6/data/local/lm/text_char.2g.arpa')
         hyp, hypScore = clm_decoder.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'clm2':
         import clm_decoder2
         # Character LM
-        clm = None
+        # NOTE need to restructure decoders into classes
+        clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/amaas/kaldi-stanford/kaldi-trunk/egs/wsj/s6/data/local/lm/text_char.2g.arpa')
         hyp, hypScore = clm_decoder2.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'fast':

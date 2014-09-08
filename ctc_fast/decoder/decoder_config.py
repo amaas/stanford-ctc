@@ -49,7 +49,8 @@ LAYER_SIZE = 1824
 ANNEAL = 1.2 if DATASET == 'wsj' else 1.3
 TEMPORAL_LAYER = 3
 
-MODEL_DIR = '/afs/cs.stanford.edu/u/zxie/kaldi-stanford/stanford-nnet/ctc_fast/models'
+#MODEL_DIR = '/afs/cs.stanford.edu/u/zxie/kaldi-stanford/stanford-nnet/ctc_fast/models'
+MODEL_DIR = '/scail/group/deeplearning/speech/zxie/ctc_models'
 
 def get_brnn_model_file():
     # TODO Figure out what "new_layers" means in wsj model
