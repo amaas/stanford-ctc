@@ -31,26 +31,28 @@ def writeLogLikes(loader,nn,fn, outDir, writePickle=False):
 
     fid = open(outDir+'/loglikelihoods%d.ark'%fn,'w')
 
+    lik_dict = dict()
+
     print "Running file %d"%fn
     for i,k in enumerate(keys): 
         assert data_dict[k].shape[1] < nn.maxBatch,\
             "Need larger max utt length."
         writeUttHeader(fid,k,sizes[i],nn.outputDim)
-        probs = nn.costAndGrad(data_dict[k],returnProbs=True)
+        probs = nn.costAndGrad(data_dict[k])
         assert probs.dtype==np.float32,"Probs array malformed."
         assert probs.shape[0]==nn.outputDim,"Probs dimensions mismatch."
         probs = np.log(probs)
         probs.T.tofile(fid)
         lik_dict[k] = probs
     fid.close()
-    
+
     if writePickle:
         print "Writing pickle for file %d"%fn
         with open(outDir+'/loglikelihoods_%d.pk'%fn,'wb') as f:
             pickle.dump(lik_dict,f)
 
     print "Done with file %d"%fn
-    return lik_dict 
+    return lik_dict
 
 def run(args=None):
     usage = "usage : %prog [options]"

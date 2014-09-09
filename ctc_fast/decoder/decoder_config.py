@@ -1,15 +1,20 @@
 import os
 from os.path import join as pjoin
+import multiprocessing
+
+NUM_CPUS = multiprocessing.cpu_count() - 1
 
 EGS_DIR = '/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs'
 
 DATASET = 'wsj'
 
+SCAIL_DATA_DIR = '/scail/data/group/deeplearning/u/zxie'
+
 # CTC Parameters
 
 if DATASET == 'wsj':
-    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
-    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
+    #DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/test_dev93_ctc/')
+    DATA_DIR = pjoin(EGS_DIR, 'wsj/s6/exp/train_si284_ctc/')
     INPUT_DIM = 21*23
     RAW_DIM = 41*23
     OUTPUT_DIM = 32  # FIXME
@@ -31,7 +36,7 @@ if DATASET == 'wsj':
     CHARMAP_PATH = pjoin(EGS_DIR, 'wsj/s6/ctc-utils/')
 elif DATASET == 'swbd':
     SPACE = '[space]'
-    SPECIALS_LIST = ['[vocalized-noise]','[laughter]','[space]','[noise]']
+    SPECIALS_LIST = ['[vocalized-noise]', '[laughter]', '[space]', '[noise]']
     CHARMAP_PATH = pjoin(EGS_DIR, 'swbd/s5b/ctc-utils/')
 
 USE_TRIGRAM = False
@@ -55,6 +60,5 @@ MODEL_DIR = '/scail/group/deeplearning/speech/zxie/ctc_models'
 def get_brnn_model_file():
     # TODO Figure out what "new_layers" means in wsj model
     model_file = pjoin(MODEL_DIR, '%s_%d_%d_bitemporal_%d_step_1e-5_mom_.95_anneal_%.1f.bin' % (DATASET, NUM_LAYERS, LAYER_SIZE, TEMPORAL_LAYER, ANNEAL))
-    print model_file
     assert os.path.exists(model_file)
     return model_file

@@ -1,16 +1,18 @@
+import os
 import optparse
+from os.path import join as pjoin
 import numpy as np
 import cPickle as pickle
 import cudamat as cm
+
+from writeLikelihoods import writeLogLikes
 
 import sgd
 import nnets.brnnet as rnnet
 import dataLoader as dl
 import pdb
 
-from decoder_config import SPACE
-from decoder_utils import decode
-
+from decoder_config import SCAIL_DATA_DIR
 
 def run(args=None):
     usage = "usage : %prog [options]"
@@ -108,15 +110,11 @@ def run(args=None):
 
 
 def test(opts):
-    import editDistance as ed
-
     print "Testing model %s" % opts.inFile
-
-    phone_map = get_char_map(opts.dataDir)
 
     with open(opts.inFile, 'r') as fid:
         old_opts = pickle.load(fid)
-        _ = pickle.load(fid)
+        pickle.load(fid)
         loader = dl.DataLoader(
             opts.dataDir, old_opts.rawDim, old_opts.inputDim)
         nn = rnnet.NNet(old_opts.inputDim, old_opts.outputDim, old_opts.layerSize, old_opts.numLayers,
@@ -124,68 +122,12 @@ def test(opts):
         nn.initParams()
         nn.fromFile(fid)
 
-    totdist = numphones = 0
-    lengthsH = []
-    lengthsR = []
-    scoresH = []
-    scoresR = []
-    fid = open('hyp.txt', 'w')
-
+    # FIXME Different output directory specific to test set
+    out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
     for i in range(1, opts.numFiles + 1):
-        data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
-        for k in keys:
-            labels = np.array(alis[k], dtype=np.int32)
-            # Build sentence for lm
-            sentence = []
-            ref = []
-            word = ""
-            for a in labels:
-                token = phone_map[a]
-                ref.append(token)
-                if token != SPACE:
-                    word += token
-                else:
-                    sentence.append(word)
-                    word = ""
-            #ref = [phone_map[int(r)] for r in alis[k]]
-
-            #hyp,hypscore,truescore = nn.costAndGrad(data_dict[k],labels=labels, sentence=sentence)
-            probs = nn.costAndGrad(data_dict[k], labels)
-            probs = np.log(probs.astype(np.float64) + 1e-30)
-            hyp, hypscore, truescore = decode(probs,
-                    alpha=0.0, beta=0.0, beam=40, method='clm2')
-            if truescore is None:
-                truescore = 0.0
-            if hypscore is None:
-                hypscore = 0.0
-            hyp = [phone_map[h] for h in hyp]
-            lengthsH.append(float(len(hyp)))
-            lengthsR.append(float(len(ref)))
-            scoresH.append(hypscore)
-            scoresR.append(truescore)
-            print "Ref score %f" % (truescore)
-            dist, ins, dels, subs, corr = ed.edit_distance(ref, hyp)
-            print "Distance %d/%d, HYP Score %f, Ref Score %f" % (dist, len(ref), hypscore, truescore)
-            fid.write(k + ' ' + ' '.join(hyp) + '\n')
-            totdist += dist
-            numphones += len(alis[k])
-
-    print "Avg ref score %f" % (sum(scoresR) / len(scoresR))
-    print "Avg hyp score %f, Avg ref score %f" % (sum(scoresH) / len(scoresH), sum(scoresR) / len(scoresR))
-    fid.close()
-    with open("scores.bin", 'w') as fid2:
-        pickle.dump(scoresH, fid2)
-        pickle.dump(scoresR, fid2)
-    print "Average Lengths HYP: %f REF: %f" % (np.mean(lengthsH), np.mean(lengthsR))
-    print "CER : %f" % (100 * totdist / float(numphones))
-
-
-def get_char_map(dataDir):
-    kaldi_base = '/'.join(dataDir.split('/')[:-3]) + '/'
-    with open(kaldi_base + 'ctc-utils/chars.txt', 'r') as fid:
-        labels = [l.strip().split() for l in fid.readlines()]
-        labels = dict((int(k), v) for v, k in labels)
-    return labels
+        writeLogLikes(loader, nn, i, out_dir, writePickle=True)
 
 
 if __name__ == '__main__':

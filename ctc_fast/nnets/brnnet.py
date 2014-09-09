@@ -159,7 +159,7 @@ class NNet:
         self.probs.mult_by_row(self.rowVec)
 
         self.probs.copy_to_host()
-        if not self.train: 
+        if not self.train:
             probs = self.probs.numpy_array
             return probs
 

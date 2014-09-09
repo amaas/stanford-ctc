@@ -31,7 +31,6 @@ typedef std::pair<PrefixKey, PrefixHyp::Ptr> PrefixPair;
 
 double combine(double a, double b, double c=NEG_INF);
 double prefix_hyp_score(PrefixHyp::Ptr hyp);
-// TODO Pass ref?
 bool comp_prefix_pair(const PrefixPair& x, const PrefixPair& y);
 
 double decode_bg_lm(double* probs, int N, int T, PrefixTree& ptree,
