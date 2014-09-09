@@ -4,6 +4,7 @@ import editDistance as ed
 import dataLoader as dl
 import cPickle as pickle
 
+from joblib import Parallel, delayed
 from decoder_config import SPACE, NUM_CPUS, SCAIL_DATA_DIR,\
         INPUT_DIM, RAW_DIM
 from decoder_utils import decode
@@ -21,6 +22,30 @@ def get_char_map(dataDir):
     return labels
 
 
+def decode_utterance(k, probs, labels, phone_map):
+    labels = np.array(labels, dtype=np.int32)
+    # Build sentence for lm
+    sentence = []
+    ref = []
+    word = ""
+    for a in labels:
+        token = phone_map[a]
+        ref.append(token)
+        if token != SPACE:
+            word += token
+        else:
+            sentence.append(word)
+            word = ""
+    #ref = [phone_map[int(r)] for r in labels]
+
+    probs = probs.astype(np.float64)
+
+    hyp, hypscore, truescore = decode(probs,
+            alpha=0.0, beta=0.0, beam=40, method='clm2')
+
+    return (hyp, ref, hypscore, truescore)
+
+
 def run(opts):
     totdist = numphones = 0
     lengthsH = []
@@ -29,44 +54,32 @@ def run(opts):
     scoresR = []
     fid = open('hyp.txt', 'w')
 
-    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
+    phone_map = get_char_map(opts.dataDir)
 
+    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
     likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes')
 
     for i in range(1, opts.numFiles + 1):
         data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
 
-        phone_map = get_char_map(opts.dataDir)
 
-        # TODO Load in the probs for the utterance
         ll_file = pjoin(likelihoodsDir, 'loglikelihoods_%d.pk' % i)
         ll_fid = open(ll_file, 'rb')
         probs_dict = pickle.load(ll_fid)
 
-        for k in keys:
-            labels = np.array(alis[k], dtype=np.int32)
-            # Build sentence for lm
-            sentence = []
-            ref = []
-            word = ""
-            for a in labels:
-                token = phone_map[a]
-                ref.append(token)
-                if token != SPACE:
-                    word += token
-                else:
-                    sentence.append(word)
-                    word = ""
-            #ref = [phone_map[int(r)] for r in alis[k]]
+        # Parallelize decoding over utterances
 
-            probs = probs_dict[k].astype(np.float64)
+        print 'Decoding utterances in parallel, n_jobs=%d' % NUM_CPUS
+        decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map) for k in keys)
 
-            hyp, hypscore, truescore = decode(probs,
-                    alpha=0.0, beta=0.0, beam=40, method='pmax')
+        # Log stats
+
+        for k, (hyp, ref, hypscore, truescore) in zip(keys, decoded_utts):
             if truescore is None:
                 truescore = 0.0
             if hypscore is None:
                 hypscore = 0.0
+
             hyp = [phone_map[h] for h in hyp]
             lengthsH.append(float(len(hyp)))
             lengthsR.append(float(len(ref)))
