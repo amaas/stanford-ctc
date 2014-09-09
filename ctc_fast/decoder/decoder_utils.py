@@ -6,7 +6,7 @@ from nnets.brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
         DATA_DIR, SPACE, CHARMAP_PATH
-import decoder
+import bg_decoder
 import ctc_fast as ctc
 # char lm
 import kenlm
@@ -76,7 +76,7 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm'):
         lm = pt.lm
         print 'Done loading prefix tree.'
         tic = time.time()
-        hyp, hypScore = decoder.decode_bg_lm(probs, pt, lm, beam=beam,
+        hyp, hypScore = bg_decoder.decode_bg_lm(probs, pt, lm, beam=beam,
                 alpha=alpha, beta=beta)
         toc = time.time()
         print 'decoding time (wall): %f' % (toc - tic)
