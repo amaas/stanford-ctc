@@ -13,7 +13,7 @@
 
 // NOTE
 // Current bottlenecks according to gprof are
-// std::sort
+// std::sort (should be fixed now)
 // unordered_map find
 // unordered_map []
 
@@ -32,8 +32,7 @@ double prefix_hyp_score(PrefixHyp::Ptr hyp)
     return combine(hyp->p_nb, hyp->p_b) + COMP_BETA * hyp->nw;
 }
 
-// TODO Not why why trying to use PrefixPair& reference causes compiler to complain
-bool comp_prefix_pair(const PrefixPair x, const PrefixPair y)
+bool comp_prefix_pair(const PrefixPair& x, const PrefixPair& y)
 {
     // Want descending order
     //return prefix_hyp_score(x.second) > prefix_hyp_score(y.second);
