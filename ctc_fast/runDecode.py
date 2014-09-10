@@ -6,7 +6,7 @@ import cPickle as pickle
 
 from joblib import Parallel, delayed
 from decoder_config import SPACE, NUM_CPUS, SCAIL_DATA_DIR,\
-        INPUT_DIM, RAW_DIM
+        INPUT_DIM, RAW_DIM, DATASET
 from decoder_utils import decode
 
 '''
@@ -52,12 +52,12 @@ def run(opts):
     lengthsR = []
     scoresH = []
     scoresR = []
-    fid = open('hyp.txt', 'w')
+    fid = open(opts.out_file, 'w')
 
     phone_map = get_char_map(opts.dataDir)
 
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
-    likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes')
+    likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s' % DATASET)
 
     for i in range(1, opts.numFiles + 1):
         data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
@@ -114,6 +114,7 @@ if __name__ == '__main__':
     parser.add_option(
         "--inputDim", dest="inputDim", type="int", default=INPUT_DIM)
     parser.add_option("--rawDim", dest="rawDim", type="int", default=RAW_DIM)
+    parser.add_option('--out_file', dest='out_file', type='string', default='hyp.txt')
 
     (opts, args) = parser.parse_args()
 

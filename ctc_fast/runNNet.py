@@ -10,9 +10,8 @@ from writeLikelihoods import writeLogLikes
 import sgd
 import nnets.brnnet as rnnet
 import dataLoader as dl
-import pdb
 
-from decoder_config import SCAIL_DATA_DIR
+from decoder_config import SCAIL_DATA_DIR, DATASET
 
 def run(args=None):
     usage = "usage : %prog [options]"
@@ -123,7 +122,7 @@ def test(opts):
         nn.fromFile(fid)
 
     # FIXME Different output directory specific to test set
-    out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes')
+    out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s' % DATASET)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i in range(1, opts.numFiles + 1):

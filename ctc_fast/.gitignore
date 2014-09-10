@@ -1,2 +1,6 @@
 ctc-loss/ctc_fast.c
 decoder/*.c
+hyp*.txt
+mergehyp.txt
+hyp.ctm
+scores.bin
