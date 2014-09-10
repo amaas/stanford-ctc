@@ -1,12 +1,9 @@
 import os
 from os.path import join as pjoin
-import multiprocessing
-
-NUM_CPUS = multiprocessing.cpu_count() - 1
 
 EGS_DIR = '/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs'
 
-DATASET = 'wsj'
+DATASET = 'swbd'
 
 SCAIL_DATA_DIR = '/scail/data/group/deeplearning/u/zxie'
 

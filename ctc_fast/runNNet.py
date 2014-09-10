@@ -11,7 +11,7 @@ import sgd
 import nnets.brnnet as rnnet
 import dataLoader as dl
 
-from decoder_config import SCAIL_DATA_DIR, DATASET
+from decoder.decoder_config import SCAIL_DATA_DIR, DATASET
 
 def run(args=None):
     usage = "usage : %prog [options]"
