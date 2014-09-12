@@ -4,3 +4,4 @@ hyp*.txt
 mergehyp.txt
 hyp.ctm
 scores.bin
+*.pk

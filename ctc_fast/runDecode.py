@@ -1,7 +1,6 @@
 import os
 import numpy as np
 from os.path import join as pjoin
-import editDistance as ed
 import dataLoader as dl
 import cPickle as pickle
 from collections import defaultdict
@@ -50,17 +49,17 @@ def decode_utterance(k, probs, labels, phone_map):
 
 
 def runSeq(opts):
-    totdist = numphones = 0
-    lengthsH = []
-    lengthsR = []
-    scoresH = []
-    scoresR = []
     fid = open(opts.out_file, 'w')
-
     phone_map = get_char_map(opts.dataDir)
 
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
     likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s' % DATASET)
+
+    hyps = list()
+    refs = list()
+    hypscores = list()
+    refscores = list()
+    numphones = list()
 
     for i in range(opts.start_file, opts.start_file + opts.numFiles):
         data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
@@ -74,35 +73,30 @@ def runSeq(opts):
         print 'Decoding utterances in parallel, n_jobs=%d' % NUM_CPUS
         decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map) for k in keys)
 
-        # Log stats
-        # FIXME This should really be done as post-processing
-
-        for k, (hyp, ref, hypscore, truescore) in zip(keys, decoded_utts):
-            if truescore is None:
-                truescore = 0.0
+        for k, (hyp, ref, hypscore, refscore) in zip(keys, decoded_utts):
+            if refscore is None:
+                refscore = 0.0
             if hypscore is None:
                 hypscore = 0.0
-
             hyp = [phone_map[h] for h in hyp]
-            lengthsH.append(float(len(hyp)))
-            lengthsR.append(float(len(ref)))
-            scoresH.append(hypscore)
-            scoresR.append(truescore)
-            print "Ref score %f" % (truescore)
-            dist, ins, dels, subs, corr = ed.edit_distance(ref, hyp)
-            print "Distance %d/%d, HYP Score %f, Ref Score %f" % (dist, len(ref), hypscore, truescore)
             fid.write(k + ' ' + ' '.join(hyp) + '\n')
-            totdist += dist
-            numphones += len(alis[k])
 
-    print "Avg ref score %f" % (sum(scoresR) / len(scoresR))
-    print "Avg hyp score %f, Avg ref score %f" % (sum(scoresH) / len(scoresH), sum(scoresR) / len(scoresR))
+            hyps.append(hyp)
+            refs.append(ref)
+            hypscores.append(hypscore)
+            refscores.append(refscore)
+            numphones.append(len(alis[k]))
+
     fid.close()
-    #with open("scores.bin", 'w') as fid2:
-        #pickle.dump(scoresH, fid2)
-        #pickle.dump(scoresR, fid2)
-    print "Average Lengths HYP: %f REF: %f" % (np.mean(lengthsH), np.mean(lengthsR))
-    print "CER : %f" % (100 * totdist / float(numphones))
+
+    # Pickle some values for computeStats.py
+    pkid = open(opts.out_file.replace('.txt', '.pk'), 'wb')
+    pickle.dump(hyps, pkid)
+    pickle.dump(refs, pkid)
+    pickle.dump(hypscores, pkid)
+    pickle.dump(refscores, pkid)
+    pickle.dump(numphones, pkid)
+    pkid.close()
 
 
 def runNode(node, node_files_dict):
