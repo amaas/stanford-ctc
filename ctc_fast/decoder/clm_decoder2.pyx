@@ -43,6 +43,8 @@ def lm_score_final_char(lm, chars, prefix, query_char):
 def lm_score_final_char(lm, char_map, prefix, query_char, order=5):
     # Have to reverse prefix for srilm
     s = int_to_char(prefix[-1:-1-order:-1], char_map)
+    if len(s) < order - 1:
+        s = s + ['<s>']
     #print s
     return lm.logprob_strings(char_map[query_char], s)
 
