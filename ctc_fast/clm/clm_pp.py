@@ -66,6 +66,7 @@ if __name__ == '__main__':
     lm = LM('/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.1.arpa' % ORDER)
     print 'Done.'
 
+    # NOTE FIXME These texts still have hesitation symbols and the like
     with open('/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/data/train/text', 'r') as fin:
         transcript = fin.read().strip()
 

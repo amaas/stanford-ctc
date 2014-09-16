@@ -6,10 +6,14 @@ import cPickle as pickle
 from collections import defaultdict
 from joblib import Parallel, delayed
 from decoder.decoder_config import SPACE, SCAIL_DATA_DIR,\
-        INPUT_DIM, RAW_DIM, DATASET
+        INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET, LM_ARPA_FILE
 from cluster.config import NUM_CPUS, CLUSTER_DIR, PYTHON_CMD
 from cluster.utils import get_free_nodes, run_cpu_job
 from decoder.decoder_utils import decode
+#import kenlm
+from srilm import LM
+if DATA_SUBSET == 'eval2000':
+    from decoder.decoder_config import SWBD_SUBSET
 
 '''
 Take probs outputted by runNNet.py forward props and run
@@ -24,7 +28,7 @@ def get_char_map(dataDir):
     return labels
 
 
-def decode_utterance(k, probs, labels, phone_map):
+def decode_utterance(k, probs, labels, phone_map, lm=None):
     labels = np.array(labels, dtype=np.int32)
     # Build sentence for lm
     sentence = []
@@ -43,7 +47,7 @@ def decode_utterance(k, probs, labels, phone_map):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=0.0, beta=0.0, beam=40, method='clm2')
+            alpha=0.0, beta=0.0, beam=1, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 
@@ -52,8 +56,9 @@ def runSeq(opts):
     fid = open(opts.out_file, 'w')
     phone_map = get_char_map(opts.dataDir)
 
-    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
-    likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s' % DATASET)
+    alisDir = opts.alisDir if opts.alisDir else opts.dataDir
+    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
+    likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s_%s' % (DATASET, DATA_SUBSET))
 
     hyps = list()
     refs = list()
@@ -61,17 +66,30 @@ def runSeq(opts):
     refscores = list()
     numphones = list()
 
+    #clm = kenlm.LanguageModel(LM_ARPA_FILE)
+    print 'Loading language model...'
+    print LM_ARPA_FILE
+    clm = LM(LM_ARPA_FILE)
+    print 'Done.'
+    #clm = None
+
     for i in range(opts.start_file, opts.start_file + opts.numFiles):
         data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
+
+        # For Switchboard filter
+        if DATA_SUBSET == 'eval2000':
+            if SWBD_SUBSET == 'swbd':
+                keys = [k for k in keys if k.startswith('sw')]
+            elif SWBD_SUBSET == 'callhome':
+                keys = [k for k in keys if k.startswith('en')]
 
         ll_file = pjoin(likelihoodsDir, 'loglikelihoods_%d.pk' % i)
         ll_fid = open(ll_file, 'rb')
         probs_dict = pickle.load(ll_fid)
 
         # Parallelize decoding over utterances
-
         print 'Decoding utterances in parallel, n_jobs=%d' % NUM_CPUS
-        decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map) for k in keys)
+        decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map, lm=clm) for k in keys)
 
         for k, (hyp, ref, hypscore, refscore) in zip(keys, decoded_utts):
             if refscore is None:
@@ -154,6 +172,7 @@ if __name__ == '__main__':
     # Data
     parser.add_option("--dataDir", dest="dataDir", type="string",
                       default="/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
+    parser.add_option('--alisDir', dest='alisDir', type='string', default='')
     parser.add_option("--numFiles", dest="numFiles", type="int", default=384)
     parser.add_option(
         "--inputDim", dest="inputDim", type="int", default=INPUT_DIM)
