@@ -5,11 +5,11 @@ import dataLoader as dl
 from nnets.brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
-        DATA_DIR, SPACE, CHARMAP_PATH
+        DATA_DIR, SPACE, CHARMAP_PATH, LM_ARPA_FILE
 import bg_decoder
 import ctc_fast as ctc
-# char lm
-import kenlm
+#import kenlm
+from fastdecode import decode_lm_wrapper
 
 
 def load_chars():
@@ -17,9 +17,15 @@ def load_chars():
         chars = dict(tuple(l.strip().split()) for l in fid.readlines())
     for k, v in chars.iteritems():
         chars[k] = int(v)
-    print chars
     return chars
 
+def load_char_map():
+    with open(CHARMAP_PATH+'chars.txt') as fid:
+        chars = dict(tuple(l.strip().split()) for l in fid.readlines())
+    for k, v in chars.iteritems():
+        chars[k] = int(v)
+    char_map = dict((v, k) for k, v in chars.iteritems())
+    return char_map
 
 def load_words():
     with open(CHARMAP_PATH+'wordlist') as fid:
@@ -46,8 +52,7 @@ def load_nnet():
     return rnn
 
 
-def int_to_char(int_seq, chars):
-    char_map = dict((v, k) for k, v in chars.iteritems())
+def int_to_char(int_seq, char_map):
     return [char_map[i] for i in int_seq]
 
 
@@ -55,7 +60,7 @@ def collapse_seq(char_seq):
     return ''.join([' ' if c == SPACE else c for c in char_seq])
 
 
-def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm'):
+def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm2', clm=None):
 
     hypScore = None
     refScore = None
@@ -69,9 +74,9 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm'):
         # Pointwise argmax
         hyp = ctc.decode_best_path(probs)
     elif method == 'bg':
+        import prefixTree
         # Bigram LM w/ prefix tree dictionary constraint
         print 'Loading prefix tree (this can take a while)...'
-        import prefixTree
         pt = prefixTree.loadPrefixTree()
         lm = pt.lm
         print 'Done loading prefix tree.'
@@ -84,18 +89,15 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm'):
         import clm_decoder
         # Character LM
         # NOTE need to restructure decoders into classes
-        clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/amaas/kaldi-stanford/kaldi-trunk/egs/wsj/s6/data/local/lm/text_char.2g.arpa')
         hyp, hypScore = clm_decoder.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'clm2':
         import clm_decoder2
         # Character LM
         # NOTE need to restructure decoders into classes
-        clm = kenlm.LanguageModel('/scail/group/deeplearning/speech/amaas/kaldi-stanford/kaldi-trunk/egs/wsj/s6/data/local/lm/text_char.2g.arpa')
         hyp, hypScore = clm_decoder2.decode_clm(probs, clm, beam=beam,
                 alpha=alpha, beta=beta)
     elif method == 'fast':
-        from fastdecode import decode_lm_wrapper
         hyp, hypScore = decode_lm_wrapper(probs, beam, alpha, beta)
     else:
         assert False, 'No such decoding method: %s' % method

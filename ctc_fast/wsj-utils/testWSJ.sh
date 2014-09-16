@@ -4,9 +4,9 @@
 # verbose
 set -x
 
-base=/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk
+base=/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk
 wsj=$base/egs/wsj/s6
-infile=/afs/cs.stanford.edu/u/awni/ctc_fast/$1
+infile=/afs/cs.stanford.edu/u/zxie/kaldi-stanford/stanford-nnet/ctc_fast/models/wsj_5_1824_bitemporal_3_step_1e-5_mom_.95_anneal_1.2.bin
 #data=train_si284
 #data=test_dev93
 data=test_eval92

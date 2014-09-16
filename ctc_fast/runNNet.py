@@ -11,7 +11,7 @@ import sgd
 import nnets.brnnet as rnnet
 import dataLoader as dl
 
-from decoder.decoder_config import SCAIL_DATA_DIR, DATASET
+from decoder.decoder_config import SCAIL_DATA_DIR, DATASET, DATA_SUBSET
 
 def run(args=None):
     usage = "usage : %prog [options]"
@@ -41,6 +41,7 @@ def run(args=None):
     # Data
     parser.add_option("--dataDir", dest="dataDir", type="string",
                       default="/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
+    parser.add_option('--alisDir', dest='alisDir', type='string', default='')
     parser.add_option("--numFiles", dest="numFiles", type="int", default=384)
     parser.add_option(
         "--inputDim", dest="inputDim", type="int", default=41 * 15)
@@ -113,16 +114,23 @@ def test(opts):
 
     with open(opts.inFile, 'r') as fid:
         old_opts = pickle.load(fid)
-        pickle.load(fid)
+        pickle.load(fid)  # SGD data
+        print 'rawDim:', old_opts.rawDim, 'inputDim:', old_opts.inputDim,\
+            'layerSize:', old_opts.layerSize, 'numLayers:', old_opts.numLayers,\
+            'maxUttLen:', old_opts.maxUttLen
+        print 'temporalLayer:', old_opts.temporalLayer, 'outputDim:', old_opts.outputDim
+
+        maxUttLen = 5000  # FIXME
+        alisDir = opts.alisDir if opts.alisDir else opts.dataDir
         loader = dl.DataLoader(
-            opts.dataDir, old_opts.rawDim, old_opts.inputDim)
+            opts.dataDir, old_opts.rawDim, old_opts.inputDim, alisDir)
         nn = rnnet.NNet(old_opts.inputDim, old_opts.outputDim, old_opts.layerSize, old_opts.numLayers,
-                        opts.maxUttLen, temporalLayer=old_opts.temporalLayer, train=False)
+                        maxUttLen, temporalLayer=old_opts.temporalLayer, train=False)
         nn.initParams()
         nn.fromFile(fid)
 
     # FIXME Different output directory specific to test set
-    out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s' % DATASET)
+    out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s_%s' % (DATASET, DATA_SUBSET))
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i in range(1, opts.numFiles + 1):

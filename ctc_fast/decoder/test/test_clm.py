@@ -1,6 +1,6 @@
 import numpy as np
 from decoder_utils import load_data, load_nnet, int_to_char,\
-        collapse_seq, decode, load_chars
+        collapse_seq, decode, load_char_map
 
 if __name__ == '__main__':
     print 'Loading data'
@@ -21,10 +21,10 @@ if __name__ == '__main__':
         hyp_pmax, _, _ = decode(probs,
                 alpha=1.0, beta=0.0, method='pmax')
 
-        chars = load_chars()
+        char_map = load_char_map()
         if labels is not None:
-            print '  labels:', collapse_seq(int_to_char(labels, chars))
-        print ' top hyp:', collapse_seq(int_to_char(hyp, chars))
-        print 'pmax hyp:', collapse_seq(int_to_char(hyp_pmax, chars))
+            print '  labels:', collapse_seq(int_to_char(labels, char_map))
+        print ' top hyp:', collapse_seq(int_to_char(hyp, char_map))
+        print 'pmax hyp:', collapse_seq(int_to_char(hyp_pmax, char_map))
         print 'score:', hypScore
         #print 'ref score:', refScore

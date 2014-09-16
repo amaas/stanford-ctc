@@ -2,7 +2,7 @@ import imp
 import sys
 import collections
 from decoder_config import LM_SOURCE, CHARMAP_PATH, SPACE,\
-        SPECIALS_LIST, LM_PREFIX, LM_ARPA_FILE
+        SPECIALS_LIST, LM_ARPA_FILE
 from decoder_utils import load_chars, load_words
 
 
