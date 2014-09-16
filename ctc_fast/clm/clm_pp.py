@@ -1,5 +1,6 @@
+import math
 from srilm import LM
-from decoder_config import SPACE
+from decoder_config import SPACE, SPECIALS_LIST
 
 '''
 Compute perplexity of character LM on some transcripts
@@ -9,8 +10,8 @@ def preproc_transcript(transcript, num_lines=float('inf')):
     utts = list()
     l = 0
     for line in transcript.split('\n'):
-        # Remove utterance ids
-        utt = line.split(' ', 1)[1]
+        # Remove utterance ids and lowercase
+        utt = line.split(' ', 1)[1].lower()
         utts.append(utt)
         l += 1
         if l >= num_lines:
@@ -20,10 +21,18 @@ def preproc_transcript(transcript, num_lines=float('inf')):
 def preproc_utts(utts):
     '''
     Convert raw text into character language model format
+    Split characters up, add start and end symbols, replace spaces
+    Avoid splitting up characters in specials tokens list
     '''
-    # Split characters up, add start and end symbols, replace spaces
-    text = [['<s>'] + list(utt) + ['</s>'] for utt in utts]
-    text = [[c if c != ' ' else SPACE for c in utt] for utt in text]
+    utt_sents = [utt.split(' ') for utt in utts]
+    # Split up characters while preserving special characters and adding back spaces
+    text = [[list(sent[k] + (' ' if k < len(sent) - 1 else ''))
+            if sent[k] not in SPECIALS_LIST else [sent[k]]
+            for k in xrange(len(sent))] for sent in utt_sents]
+    # Flatten nested list
+    text = [[c for w in s for c in w] for s in text]
+    # Add start and end symbols and replace spaces with space token
+    text = [['<s>'] + [c if c != ' ' else SPACE for c in utt] + ['</s>'] for utt in text]
     return text
 
 def compute_pp(text, lm, order):
@@ -53,7 +62,9 @@ if __name__ == '__main__':
     ORDER = 5
     NUM_LINES = float('inf')
 
-    lm = LM('/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.arpa' % ORDER)
+    print 'Loading LM...'
+    lm = LM('/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.1.arpa' % ORDER)
+    print 'Done.'
 
     with open('/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/data/train/text', 'r') as fin:
         transcript = fin.read().strip()
@@ -63,3 +74,4 @@ if __name__ == '__main__':
     pp = compute_pp(text, lm, ORDER)
 
     print 'Perplexity: %f' % pp
+    print 'Bits/char: %f' % math.log(pp, 2)
