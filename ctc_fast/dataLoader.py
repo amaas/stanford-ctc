@@ -4,7 +4,7 @@ import os
 import multiprocessing as mp
 
 class DataLoader:
-    def __init__(self,filedir_feat,rawsize,imgsize,filedir_ali=None, load_ali=True):
+    def __init__(self,filedir_feat,rawsize,imgsize,filedir_ali=None, load_ali=True, load_data=True):
         """
         filedir_feat: directory for feature and key files
         filedir_ali: directory for alignment files. Assumed same as filedir if not given
@@ -17,6 +17,7 @@ class DataLoader:
         else:
             self.filedir_ali = filedir_ali
         self.load_ali = load_ali
+        self.load_data = load_data
 
     def getDataAsynch(self):
         assert self.p is not None, "Error in order of asynch calls."
@@ -42,20 +43,7 @@ class DataLoader:
 
         keys = None
         sizes = None
-        if os.path.exists(keyfile):
-            keyf = open(keyfile,'r')
-            uttdat = [u.split() for u in keyf.readlines()]
-            keyf.close()
-            sizes = [int(u[1]) for u in uttdat]
-            sizes = np.array(sizes)
-            keys = [u[0] for u in uttdat]
-            
-        left = (self.rawsize-self.imgsize)/2
-        right = left+self.imgsize
-        
-        data = np.fromfile(datafile,np.float32).reshape(-1,self.rawsize)
-        data = data[:np.sum(sizes),left:right]
-        
+        data = None
 	alis = []
         if self.load_ali:
             with open(alisfile,'r') as fid:
@@ -63,28 +51,48 @@ class DataLoader:
                     l = l.split()
                     alis.append((l[0],l[1:]))
             alis = dict(alis)
-        
-        return data.T,alis,keys,sizes
+
+        if self.load_data:
+
+            if os.path.exists(keyfile):
+                with open(keyfile,'r') as keyf:
+                    uttdat = [u.split() for u in keyf.readlines()]
+                sizes = [int32(u[1]) for u in uttdat]
+                sizes = np.array(sizes)
+                keys = [u[0] for u in uttdat]
+            
+            left = (self.rawsize-self.imgsize)/2
+            right = left+self.imgsize
+            
+            data = np.fromfile(datafile,np.float32).reshape(-1,self.rawsize)
+            data = data[:np.sum(sizes),left:right]                
+            return data.T,alis,keys,sizes
+        # return for case when no data loaded
+        # use keys from alignments instead
+        keys = alis.keys()
+        return data,alis,keys,sizes
 
     def loadDataFileDict(self,filenum):
         """
         Loads a data file but stores input frames in a dictionary keyed by utterance
         Each input dictionary entry is a 2-D matrix of length equal to that utterance
         Other variables returned are the same as the original loader
+        returns None for data when not set to load data
         """
         data_mat, alis, keys, sizes = self.loadDataFile(filenum)
-        data_dict = {}
-        startInd = 0
-        for k,s in izip(keys,sizes):
-            endInd = startInd + s
-            data_dict[k] = np.copy(data_mat[:,startInd:endInd])
-            startInd = endInd
+        if self.load_data:
+            data_dict = {}
+            startInd = 0
+            for k,s in izip(keys,sizes):
+                endInd = startInd + s
+                data_dict[k] = np.copy(data_mat[:,startInd:endInd])
+                startInd = endInd
 
-        # startInd = all frames means we loaded all data
-        assert startInd, data_mat.shape[1]
+            # startInd = all frames means we loaded all data
+            assert startInd, data_mat.shape[1]
 
-        return data_dict, alis, keys, sizes
-
+            return data_dict, alis, keys, sizes
+        return None, alis, keys, sizes
             
 # Usage example / eyeball test below
 if __name__=='__main__':

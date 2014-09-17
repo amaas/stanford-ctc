@@ -58,7 +58,7 @@ cdef class DecoderBase(object):
             
             return True
 
-
+      #cpdef seq_int_to_char(self, )
       #@abc.abstractmethod
       cpdef decode(self, double[::1,:] probs):
             """
@@ -86,7 +86,10 @@ cdef class ArgmaxDecoder(DecoderBase):
             maxInd = np.argmax(probs, axis=0)
             pmInd = -1
             hyp = []
+            # TODO is this the right way to score argmax decoding?
+            hyp_score = 0.0
             for t in range(probs.shape[1]):
+                hyp_score = hyp_score + probs[maxInd[t],t]
                 if maxInd[t] != pmInd:
                     pmInd = maxInd[t]
                     if pmInd > 0:
@@ -94,7 +97,7 @@ cdef class ArgmaxDecoder(DecoderBase):
 
             # collapsed hypothesis (this is our best guess)
             hyp =  ''.join(hyp)
-            return hyp
+            return hyp, hyp_score
 
 
 cdef class BeamLMDecoder(DecoderBase):
@@ -108,36 +111,86 @@ cdef class BeamLMDecoder(DecoderBase):
             Loads a language model from lmfile
             returns True if lm loading successful
             """
-            lm = kenlm.LanguageModel(lmfile)
+            self.lm = kenlm.LanguageModel(lmfile)
             return True
 
-      def lm_score_final_char(lm, chars, prefix):
+      def lm_score_final_char(self, prefix, query_char):
             """
             uses lm to score entire prefix
             returns only the log prob of final char
             """
-            # TODO
-            #prefix_str = '<s> ' + ' '.join([chars[x] for x in prefix])
-            #print prefix_str,
-            #prefix_scores = lm.full_scores(prefix_str)
-            #print prefix_scores[-1]
+            # convert prefix and query to actual text
+            # TODO why is prefix a tuple?
+            full_int = list(prefix) + [query_char]
+            
+            full_str = ' '.join([self.int_char_map[i] for i in full_int])
+            full_scores = self.lm.full_scores(full_str)
+            #words = ['<s>'] + full_str.split() + ['</s>']
+            #TODO verify lm is not returning score for </s>
+            prob_list = [x[0] for x in full_scores]
+            # for i, (prob, length) in enumerate(prefix_scores):
+            #    print words[i], length, prob
+            return prob_list[-2]
 
 
-      cpdef decode(self, double[::1,:] probs):
+      def decode(self, double[::1,:] probs,
+                   unsigned int beam=40, double alpha=1.0, double beta=0.0):
             """
-            XXX
+            Decoder with an LM
             returns the best hypothesis in characters
             Charmap must be loaded 
             """
-            maxInd = np.argmax(probs, axis=0)
-            pmInd = -1
-            hyp = []
-            for t in range(probs.shape[1]):
-                if maxInd[t] != pmInd:
-                    pmInd = maxInd[t]
-                    if pmInd > 0:
-                        hyp.append(self.int_char_map[pmInd])
+            cdef unsigned int N = probs.shape[0]
+            cdef unsigned int T = probs.shape[1]
+            cdef unsigned int t, i
+            cdef float v0, v1, v2, v3
 
-            # collapsed hypothesis (this is our best guess)
-            hyp =  ''.join(hyp)
-            return hyp
+            keyFn = lambda x: self.combine(x[1][0],x[1][1]) + beta * x[1][2]
+            initFn = lambda : [float('-inf'),float('-inf'),0]
+
+            # [prefix, [p_nb, p_b, node, |W|]]
+            Hcurr = [[(),[float('-inf'),0.0,0]]]
+            Hold = collections.defaultdict(initFn)
+
+            # loop over time
+            for t in xrange(T):
+                  Hcurr = dict(Hcurr)
+                  Hnext = collections.defaultdict(initFn)
+
+                  for prefix,(v0,v1,numC) in Hcurr.iteritems():
+
+                        valsP = Hnext[prefix]
+                        valsP[1] = self.combine(v0+probs[0,t],v1+probs[0,t],valsP[1])
+                        valsP[2] = numC
+                        if len(prefix) > 0:
+                              valsP[0] = self.combine(v0+probs[prefix[-1],t],valsP[0])
+
+                        for i in xrange(1,N):
+                              nprefix = tuple(list(prefix) + [i])
+                              valsN = Hnext[nprefix]
+
+                              # query the LM_SCORE_FINAL_CHAR for final char score
+                              lm_prob = alpha * self.lm_score_final_char(prefix, i)
+                              # lm_prob = alpha*lm_placeholder(i,prefix)
+                              valsN[2] = numC + 1
+                              if len(prefix)==0 or (len(prefix) > 0 and i != prefix[-1]):
+                                    valsN[0] = self.combine(v0+probs[i,t]+lm_prob,v1+probs[i,t]+lm_prob,valsN[0])
+                              else:
+                                    valsN[0] = self.combine(v1+probs[i,t]+lm_prob,valsN[0])
+
+                              if nprefix not in Hcurr:
+                                    v2,v3,_ = Hold[nprefix]
+                                    valsN[1] = self.combine(v2+probs[0,t],v3+probs[0,t],valsN[1])
+                                    valsN[0] = self.combine(v2+probs[i,t],valsN[0])
+
+
+                  Hold = Hnext
+                  Hcurr = sorted(Hnext.iteritems(), key=keyFn, reverse=True)[:beam]
+
+
+            hyp = ''.join([self.int_char_map[i] for i in Hcurr[0][0]])
+
+            return hyp, keyFn(Hcurr[0])
+            #return hyp
+            #return list(Hcurr[0][0]),keyFn(Hcurr[0])
+      
