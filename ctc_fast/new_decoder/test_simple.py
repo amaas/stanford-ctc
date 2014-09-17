@@ -4,7 +4,7 @@ import decoder
 
 
 
-def main(in_file, char_file, ali_file,num_to_print):
+def main(in_file, char_file, ali_file,num_to_print,lm_file=None):
     with open(in_file,'r') as f: 
         ll_dict = pickle.load(f)
 
@@ -21,14 +21,21 @@ def main(in_file, char_file, ali_file,num_to_print):
             l_split = l.rstrip().split()
             ali_dict[l_split[0]] = ''.join([phone_list[int(x)] for x in l_split[1:]])
 
-    # create a decoder
-    dec = decoder.ArgmaxDecoder()
-    dec.load_chars(char_file)
+    # create decoders
+    dec_argmax = decoder.ArgmaxDecoder()
+    dec_argmax.load_chars(char_file)
+
+    dec_lm = decoder.BeamLMDecoder()
+    dec_lm.load_chars(char_file)
+    dec_lm.load_lm(lm_file)
+
     n_printed = 0
     for i,k in enumerate(ll_dict):
         
-        hyp = dec.decode(ll_dict[k].astype(np.double))
-        print hyp
+        hyp_argmax,score_argmax = dec_argmax.decode(ll_dict[k].astype(np.double))
+        print score_argmax, hyp_argmax
+        hyp_lm, score_lm = dec_lm.decode(ll_dict[k].astype(np.double))
+        print score_lm, hyp_lm
         print ali_dict[k]
 
         n_printed+= 1
@@ -42,6 +49,6 @@ if __name__=='__main__':
     in_file = ll_path + 'loglikelihoods_1.pk'
     char_file = ll_path + 'chars.txt'
     ali_file = ll_path + 'alis1.txt'
-
-    main(in_file, char_file,ali_file,10)
+    lm_file = '/scail/group/deeplearning/speech/amaas/kaldi-stanford/kaldi-trunk/egs/wsj/s6/data/local/lm/text_char.2g.arpa'
+    main(in_file, char_file,ali_file,10, lm_file=lm_file)
 
