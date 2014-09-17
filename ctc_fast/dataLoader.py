@@ -57,7 +57,7 @@ class DataLoader:
             if os.path.exists(keyfile):
                 with open(keyfile,'r') as keyf:
                     uttdat = [u.split() for u in keyf.readlines()]
-                sizes = [int32(u[1]) for u in uttdat]
+                sizes = [np.int32(u[1]) for u in uttdat]
                 sizes = np.array(sizes)
                 keys = [u[0] for u in uttdat]
             
