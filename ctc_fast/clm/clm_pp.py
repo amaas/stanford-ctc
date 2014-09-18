@@ -1,6 +1,7 @@
 import math
 from srilm import LM
-from decoder_config import SPACE, SPECIALS_LIST
+from decoder_config import SPACE, SPECIALS_LIST,\
+        LM_ARPA_FILE, LM_ORDER
 
 '''
 Compute perplexity of character LM on some transcripts
@@ -59,11 +60,10 @@ def compute_pp(text, lm, order):
     return pp
 
 if __name__ == '__main__':
-    ORDER = 5
     NUM_LINES = float('inf')
 
-    print 'Loading LM...'
-    lm = LM('/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.1.arpa' % ORDER)
+    print 'Loading LM %s' % LM_ARPA_FILE
+    lm = LM(LM_ARPA_FILE)
     print 'Done.'
 
     # NOTE FIXME These texts still have hesitation symbols and the like
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     utts = preproc_transcript(transcript, num_lines=NUM_LINES)
     text = preproc_utts(utts)
-    pp = compute_pp(text, lm, ORDER)
+    pp = compute_pp(text, lm, LM_ORDER)
 
     print 'Perplexity: %f' % pp
     print 'Bits/char: %f' % math.log(pp, 2)
