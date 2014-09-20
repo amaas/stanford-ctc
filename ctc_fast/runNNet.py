@@ -113,7 +113,8 @@ def run(args=None):
         test(opts)
         return
 
-    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim)
+    alisDir = opts.alisDir if opts.alisDir else opts.dataDir
+    loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
 
     nn = rnnet.NNet(opts.inputDim, opts.outputDim, opts.layerSize, opts.numLayers,
                     opts.maxUttLen, temporalLayer=opts.temporalLayer)

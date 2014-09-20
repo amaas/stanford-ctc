@@ -1,4 +1,3 @@
-import time
 import os
 import json
 import argparse
@@ -8,7 +7,7 @@ from time import strftime
 from os.path import join as pjoin
 from os.path import exists as fexists
 from run_cfg import RUN_DIR, VIEWER_DIR, BROWSE_RUNS_KEYS
-from run_utils import TimeString, file_alive, last_modified
+from run_utils import file_alive, last_modified, get_run_dirs
 from cluster.utils import NUM_CPUS
 from subprocess import check_call
 
@@ -92,12 +91,7 @@ if __name__ == '__main__':
 
     # Get run directories
 
-    run_dirs = list()
-    for d in os.listdir(args.run_dir):
-        folder = os.path.basename(d)
-        if TimeString.match(folder) and not folder.endswith('bak'):
-            print folder
-            run_dirs.append(pjoin(args.run_dir, d))
+    run_dirs = get_run_dirs(args.run_dir)
 
     data = joblib.Parallel(n_jobs=NUM_CPUS)(joblib.delayed(process_run_dir)(run_dir, figs=args.figs) for run_dir in run_dirs)
     if None in data:

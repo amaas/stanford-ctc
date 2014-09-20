@@ -4,6 +4,7 @@ import json
 import subprocess
 import time
 import datetime
+from os.path import join as pjoin
 
 
 def dump_config(cfg, fname):
@@ -80,3 +81,12 @@ class TimeString(object):
         minute = int(string[10:12])
         second = int(string[12:14])
         return TimeString(time=datetime.datetime(year, month, day, hour, minute, second))
+
+
+def get_run_dirs(parent_dir):
+    run_dirs = list()
+    for d in os.listdir(parent_dir):
+        folder = os.path.basename(d)
+        if TimeString.match(folder) and not folder.endswith('bak'):
+            run_dirs.append(pjoin(parent_dir, d))
+    return run_dirs
