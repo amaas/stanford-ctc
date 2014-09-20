@@ -6,6 +6,7 @@ cimport numpy as np
 np.seterr(all='raise')
 import collections
 from decoder_utils import int_to_char, load_char_map
+from decoder_config import LM_ORDER
 
 cdef double combine(double a,double b,double c=float('-inf')):
     cdef double psum = math.exp(a) + math.exp(b) + math.exp(c)
@@ -13,10 +14,6 @@ cdef double combine(double a,double b,double c=float('-inf')):
         return float('-inf')
     else:
         return math.log(psum)
-
-# TODO Need id -> char mapping
-cdef double lm_placeholder(c, seq):
-    return 0.0
 
 '''
 def lm_score_final_char(lm, chars, prefix, query_char):
@@ -39,8 +36,7 @@ def lm_score_final_char(lm, chars, prefix, query_char):
     return prob_list[-1]
 '''
 
-# FIXME Determine order using lm object
-def lm_score_final_char(lm, char_map, prefix, query_char, order=5):
+cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER):
     # Have to reverse prefix for srilm
     s = int_to_char(prefix[-1:-1-order:-1], char_map)
     if len(s) < order - 1:

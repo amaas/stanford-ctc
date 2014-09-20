@@ -3,31 +3,55 @@ import cudamat as cm
 import pickle
 import random
 import pdb
+import logging
 
 class SGD:
 
     def __init__(self,model,maxBatch,alpha=1e-2,optimizer='nesterov',
-                 momentum=0.9):
+                 momentum=0.9, maxGradNorm=1500):
         self.model = model
         self.maxBatch = maxBatch
         self.it = 0
         self.momentum = momentum # momentum
         self.alpha = alpha # learning rate
         self.optimizer = optimizer
-        self.maxGNorm = 1500 # gradient clip norm value
+        self.maxGNorm = maxGradNorm # gradient clip norm value
 
         if self.optimizer == 'nesterov':
             self.velocity = [[cm.CUDAMatrix(np.zeros(w.shape)),
                               cm.CUDAMatrix(np.zeros(b.shape))] 
                               for w,b in self.model.stack]
         elif self.optimizer == 'adagrad':
+            # TODO Do toFile and fromFile for adagrad
+            assert False
             epsilon = 0.0
             self.gradt = [[cm.CUDAMatrix(epsilon+np.zeros(w.shape)),
                            cm.CUDAMatrix(epsilon+np.zeros(b.shape))] 
                            for w,b in self.model.stack]
 
-	self.costt = []
-	self.expcost = []
+        self.costt = []
+        self.expcost = []
+
+    def toFile(self, fid):
+        stack = []
+        for w, b in self.velocity:
+            w.copy_to_host()
+            b.copy_to_host()
+            stack.append([w.numpy_array, b.numpy_array])
+        pickle.dump([self.it, self.costt, self.expcost, stack], fid)
+
+    def fromFile(self, fid):
+        # TODO it, costt, expcost, velocity
+        params = pickle.load(fid)
+        it, costt, expcost, stack = params
+        self.it = it
+        self.costt = costt
+        self.expcost = expcost
+        for (w, b), (wi, bi) in zip(self.velocity, stack):
+            w.numpy_array[:] = wi[:]
+            b.numpy_array[:] = bi[:]
+            w.copy_to_device()
+            b.copy_to_device()
 
     def run(self,data_dict,alis,keys,sizes):
         """
@@ -50,14 +74,14 @@ class SGD:
 
             mb_data = data_dict[k]
             if mb_data.shape[1] > self.maxBatch:
-                print ("SKIPPING utt exceeds batch length "
-                       "(Utterance length %d).")%mb_data.shape[1]
+                logging.info("SKIPPING utt exceeds batch length\
+                        (Utterance length %d)." % mb_data.shape[1])
                 continue
 
             mb_labels = np.array(alis[k],dtype=np.int32)
 
             if mb_data.shape[1] < mb_labels.shape[0]:
-                print ("SKIPPING utt frames less than label length "
+                logging.info("SKIPPING utt frames less than label length "
                        "(Utterance length %d, Num Labels %d)."
                        "")%(mb_data.shape[1],mb_labels.shape[0])
                 continue

@@ -82,7 +82,13 @@ class NNet:
                 self.deltasFor_M = cm.empty((self.layerSize,self.maxBatch))
                 self.deltasBack_M = cm.empty((self.layerSize,self.maxBatch))
 
-
+    def paramCount(self):
+        param_count = 0
+        for w, b in self.stack:
+            print w.shape, b.shape
+            param_count += np.prod(w.shape)
+            param_count += np.prod(b.shape)
+        return param_count
 
     def setViews(self,batchSize):
         """
