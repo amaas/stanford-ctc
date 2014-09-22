@@ -113,6 +113,8 @@ def run(args=None):
         test(opts)
         return
 
+    opts = CfgStruct(**cfg)
+
     alisDir = opts.alisDir if opts.alisDir else opts.dataDir
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
 
@@ -125,7 +127,6 @@ def run(args=None):
     # Dump config
     cfg['param_count'] = nn.paramCount()
     dump_config(cfg, opts.cfg_file)
-    opts = CfgStruct(**cfg)
 
     # Load model if specified
     if os.path.exists(opts.in_file):
@@ -136,7 +137,7 @@ def run(args=None):
     # Training
     epoch_file = pjoin(output_dir, 'epoch')
     if os.path.exists(epoch_file):
-        start_epoch = int(open(epoch_file, 'r').read())
+        start_epoch = int(open(epoch_file, 'r').read()) + 1
     else:
         start_epoch = 0
 

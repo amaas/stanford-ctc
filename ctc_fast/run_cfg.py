@@ -44,5 +44,5 @@ BROWSE_RUNS_KEYS = [
     'run', 'host', 'pid', 'cer', 'wer', 'numLayers',
     'layerSize', 'temporalLayer', 'momentum', 'step', 'anneal',
     'param_count', 'inputDim', 'rawDim', 'outputDim',
-    'epoch', 'complete', 'alive', 'git_rev', 'run_desc'
+    'epoch', 'num_files', 'complete', 'alive', 'git_rev', 'run_desc'
 ]

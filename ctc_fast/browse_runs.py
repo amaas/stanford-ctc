@@ -55,6 +55,9 @@ def process_run_dir(run_dir, figs=False):
         run_data['alive'] = "<span style='background:#d66;color:#fff'>False</span>"
 
     run_data['run'] = os.path.basename(run_dir)
+    num_files_file = pjoin(run_dir, 'num_files')
+    if os.path.exists(num_files_file):
+        run_data['num_files'] = open(num_files_file, 'r').read()
 
     read_cfg(cfg_file, run_data)
 

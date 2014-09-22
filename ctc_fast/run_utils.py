@@ -87,6 +87,6 @@ def get_run_dirs(parent_dir):
     run_dirs = list()
     for d in os.listdir(parent_dir):
         folder = os.path.basename(d)
-        if TimeString.match(folder) and not folder.endswith('bak'):
+        if os.path.isdir(pjoin(parent_dir, folder)) and TimeString.match(folder) and not folder.endswith('bak'):
             run_dirs.append(pjoin(parent_dir, d))
     return run_dirs

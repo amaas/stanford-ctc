@@ -83,7 +83,7 @@ class SGD:
             if mb_data.shape[1] < mb_labels.shape[0]:
                 logging.info("SKIPPING utt frames less than label length "
                        "(Utterance length %d, Num Labels %d)."
-                       "")%(mb_data.shape[1],mb_labels.shape[0])
+                       ""%(mb_data.shape[1],mb_labels.shape[0]))
                 continue
 
 
@@ -106,8 +106,7 @@ class SGD:
             gnorm = np.sqrt(gnorm)
 
 	    if skip:
-		print "SKIPPING: Key=%s, Cost=%f, SeqLen=%d, NumFrames=%d."%(k,
-			    cost,mb_labels.shape[0],mb_data.shape[1])
+		logging.info("SKIPPING: Key=%s, Cost=%f, SeqLen=%d, NumFrames=%d."%(k, cost,mb_labels.shape[0],mb_data.shape[1]))
 		continue
 
             if np.isfinite(cost):
