@@ -70,7 +70,7 @@ class TimeString(object):
 
     @classmethod
     def match(cls, s):
-        return re.match('\d{14}', s)
+        return re.match('\d{14}$', s)
 
     @classmethod
     def from_string(cls, string):
@@ -86,7 +86,6 @@ class TimeString(object):
 def get_run_dirs(parent_dir):
     run_dirs = list()
     for d in os.listdir(parent_dir):
-        folder = os.path.basename(d)
-        if os.path.isdir(pjoin(parent_dir, folder)) and TimeString.match(folder) and not folder.endswith('bak'):
+        if TimeString.match(d) and not d.endswith('bak'):
             run_dirs.append(pjoin(parent_dir, d))
     return run_dirs

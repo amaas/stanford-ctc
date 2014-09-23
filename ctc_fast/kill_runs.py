@@ -11,12 +11,13 @@ if __name__ == '__main__':
     parser.add_argument('--run_dir', help='Directory containing runs', default=RUN_DIR)
     parser.add_argument('--clear_dirs', action='store_true', help='Clear run directory as well')
     args = parser.parse_args()
+    print 'Parsed args'
 
     run_dirs = get_run_dirs(args.run_dir)
 
     for d in run_dirs:
         alive = False
-        params_file = pjoin(d, 'params.pk')
+        log_file = pjoin(d, 'train.log')
         cfg_file = pjoin(d, 'cfg.json')
 
         if not os.path.exists(cfg_file):
@@ -24,14 +25,14 @@ if __name__ == '__main__':
             shutil.rmtree(d)
             continue
 
-        if os.path.exists(params_file):
-            alive = file_alive(params_file)
-        else:
-            alive = file_alive(cfg_file)
+        alive = file_alive(log_file, max_dur_sec=30*60)
 
         if not alive:
             run = os.path.basename(d)
+            print 'loading config'
+            print cfg_file
             cfg = load_config(cfg_file)
+            print 'loaded config'
             host = cfg['host']
             pid = cfg['pid']
             print 'Killing run %s, PID %s on %s' % (run, cfg['pid'], cfg['host'])

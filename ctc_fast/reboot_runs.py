@@ -52,15 +52,11 @@ if __name__ == '__main__':
     used_gpus = set()
     for d in run_dirs:
         alive = True
-        params_file = pjoin(d, 'params.pk')
-        cfg_file = pjoin(d, 'cfg.json')
+        log_file = pjoin(d, 'train.log')
 
         # Check if alive
 
-        if os.path.exists(params_file):
-            alive = file_alive(params_file)
-        else:
-            alive = file_alive(cfg_file)
+        alive = file_alive(log_file, max_dur_sec=30*60)
 
         if not alive:
             reboot_run(d, used_gpus)

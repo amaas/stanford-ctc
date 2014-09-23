@@ -38,11 +38,8 @@ def process_run_dir(run_dir, figs=False):
     run_data['epoch'] = epoch
 
     # Alive / not
-    params_file = pjoin(run_dir, 'params.pk')
-    if os.path.exists(params_file):
-        run_data['alive'] = file_alive(params_file)
-    else:
-        run_data['alive'] = file_alive(cfg_file)
+    log_file = pjoin(run_dir, 'train.log')
+    run_data['alive'] = file_alive(log_file, max_dur_sec=30*60)
 
     # Complete / not
     run_data['complete'] = os.path.exists(pjoin(run_dir, 'sentinel'))
@@ -68,6 +65,7 @@ def process_run_dir(run_dir, figs=False):
         cmd = 'python plot_results.py %s --out_file %s' % (run_dir, plot_file)
 
         # Check if params file has been modified after the plot image file
+        params_file = pjoin(run_dir, 'params.pk')
         if (not os.path.exists(plot_file)) or (last_modified(plot_file) < last_modified(params_file)):
             print '%s modified, generating plot' % params_file
             try:

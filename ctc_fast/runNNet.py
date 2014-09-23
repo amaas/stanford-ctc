@@ -151,7 +151,7 @@ def run(args=None):
         if k == start_epoch:
             if os.path.exists(num_files_file):
                 file_start = int(open(num_files_file, 'r').read().strip())
-                logger.info('Starting from file %d' % file_start)
+                logger.info('Starting from file %d, epoch %d' % (file_start, start_epoch))
 
         for i in xrange(file_start, perm.shape[0]):
             start = time.time()
@@ -173,7 +173,7 @@ def run(args=None):
                 logger.info('Done saving parameters')
 
         # Save epoch completed
-        open(pjoin(output_dir, 'epoch'), 'w').write(k)
+        open(pjoin(output_dir, 'epoch'), 'w').write(str(k))
 
         SGD.alpha = SGD.alpha / opts.anneal
 
@@ -190,7 +190,7 @@ def test(opts):
     logger.info('Running on %s' % get_hostname())
 
     with open(old_opts.in_file, 'r') as fid:
-        pickle.load(fid)  # SGD data
+        pickle.load(fid)  # SGD data, not needed
         print 'rawDim:', old_opts.rawDim, 'inputDim:', old_opts.inputDim,\
             'layerSize:', old_opts.layerSize, 'numLayers:', old_opts.numLayers,\
             'maxUttLen:', old_opts.maxUttLen
