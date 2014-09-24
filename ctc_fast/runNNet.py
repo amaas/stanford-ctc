@@ -163,7 +163,7 @@ def run(args=None):
             end = time.time()
             logger.info('File time %f' % (end - start))
 
-            # Save parameters
+            # Save parameters and cost
             if (i+1) % opts.save_every == 0:
                 logger.info('Saving parameters')
                 with open(opts.out_file, 'w') as fid:
@@ -171,6 +171,8 @@ def run(args=None):
                     nn.toFile(fid)
                     open(num_files_file, 'w').write('%d' % (i+1))
                 logger.info('Done saving parameters')
+                with open(pjoin(output_dir, 'last_cost'), 'w') as fid:
+                    fid.write(SGD.expcost[-1])
 
         # Save epoch completed
         open(pjoin(output_dir, 'epoch'), 'w').write(str(k))
