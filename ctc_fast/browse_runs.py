@@ -39,7 +39,7 @@ def process_run_dir(run_dir, figs=False):
 
     last_cost_file = pjoin(run_dir, 'last_cost')
     if os.path.exists(last_cost_file):
-        run_data['cost'] = int(open(last_cost_file, 'r').read())
+        run_data['cost'] = float(open(last_cost_file, 'r').read())
 
     # Alive / not
     log_file = pjoin(run_dir, 'train.log')

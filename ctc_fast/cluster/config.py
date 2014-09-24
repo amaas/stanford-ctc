@@ -14,6 +14,7 @@ PYTHON_CMD = '/afs/cs.stanford.edu/u/zxie/virtualenvs/scl/bin/python'
 CLUSTER_NODES = {
     'gorgon': range(1, 30),
     'deep': range(1, 17)
+    #'deep': range(0, 1)
 }
 
 SLEEP_SEC = 30

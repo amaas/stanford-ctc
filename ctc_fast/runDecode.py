@@ -16,9 +16,10 @@ if DATA_SUBSET == 'eval2000':
     from decoder.decoder_config import SWBD_SUBSET
 
 '''
-Take probs outputted by runNNet.py forward props and run
-decoding as well as compute error metrics
+Take probs outputted by runNNet.py forward props and run decoding
+Afterwards use computeStats.py to get error metrics
 '''
+# TODO Should branch off of nnet experiment directories
 
 def get_char_map(dataDir):
     kaldi_base = '/'.join(dataDir.split('/')[:-3]) + '/'
@@ -47,7 +48,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=0.0, beta=0.0, beam=1, method='clm2', clm=lm)
+            alpha=1.0, beta=2.0, beam=10, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 

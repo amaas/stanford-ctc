@@ -26,7 +26,7 @@ elif DATASET == 'swbd':
     OUTPUT_DIM = 35
     MAX_UTT_LEN = 5000
     LAYER_SIZE = 1824
-    SWBD_SUBSET = 'callhome'
+    SWBD_SUBSET = 'all'
     assert SWBD_SUBSET in ['callhome', 'swbd', 'all']
 
 # LM Parameters
@@ -42,7 +42,8 @@ elif DATASET == 'swbd':
     SPECIALS_LIST = frozenset(['[vocalized-noise]', '[laughter]', '[space]', '[noise]'])
     CHARMAP_PATH = pjoin(EGS_DIR, 'swbd/s5b/ctc-utils/')
 
-LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.5g.1.arpa'
+LM_ORDER = 5
+LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.2.bin' % LM_ORDER
 
 # Model parameters
 

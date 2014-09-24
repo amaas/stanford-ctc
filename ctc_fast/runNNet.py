@@ -152,6 +152,8 @@ def run(args=None):
             if os.path.exists(num_files_file):
                 file_start = int(open(num_files_file, 'r').read().strip())
                 logger.info('Starting from file %d, epoch %d' % (file_start, start_epoch))
+        else:
+            open(num_files_file, 'w').write(file_start)
 
         for i in xrange(file_start, perm.shape[0]):
             start = time.time()
@@ -172,7 +174,7 @@ def run(args=None):
                     open(num_files_file, 'w').write('%d' % (i+1))
                 logger.info('Done saving parameters')
                 with open(pjoin(output_dir, 'last_cost'), 'w') as fid:
-                    fid.write(SGD.expcost[-1])
+                    fid.write(str(SGD.expcost[-1]))
 
         # Save epoch completed
         open(pjoin(output_dir, 'epoch'), 'w').write(str(k))

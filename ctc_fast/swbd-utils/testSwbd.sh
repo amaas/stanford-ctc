@@ -11,8 +11,8 @@ data=eval2000
 numfiles=23
 
 echo $infile
-python ../runNNet.py --maxUttLen 1550 --dataDir  $swbd/exp/${data}_ctc/ --numFiles $numfiles --inFile $infile --test --outputDim 35 --inputDim $((41*15)) --rawDim $((41*15)) 
-python ../runDecode.py --dataDir $swbd/exp/${data}_ctc/  --numFiles $numfiles
+#python ../runNNet.py --maxUttLen 1550 --dataDir  $swbd/exp/${data}_ctc/ --numFiles $numfiles --inFile $infile --test --outputDim 35 --inputDim $((41*15)) --rawDim $((41*15)) 
+#python ../runDecode.py --dataDir $swbd/exp/${data}_ctc/  --numFiles $numfiles
 python mergechars.py
 python convert_to_ctm.py
 ./score_sclite.sh sclite_score hyp.ctm
