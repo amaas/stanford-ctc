@@ -1,4 +1,4 @@
-source srilm_cfg.sh
+source ./srilm_cfg.sh
 
 order=$1
 oldlm=$2

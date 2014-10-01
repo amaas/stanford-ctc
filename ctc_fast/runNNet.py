@@ -88,8 +88,13 @@ def run(args=None):
     else:
         output_dir = cfg['output_dir']
 
+    cfg['output_dir'] = output_dir
     cfg['in_file'] = pjoin(output_dir, 'params.pk')
     cfg['out_file'] = pjoin(output_dir, 'params.pk')
+    cfg['test'] = opts.test
+    if opts.test:
+        cfg['dataDir'] = opts.dataDir
+        cfg['numFiles'] = opts.numFiles
 
     # Logging
 
@@ -108,12 +113,12 @@ def run(args=None):
     else:
         cm.cuda_set_device(0)  # Default
 
+    opts = CfgStruct(**cfg)
+
     # Testing
     if opts.test:
         test(opts)
         return
-
-    opts = CfgStruct(**cfg)
 
     alisDir = opts.alisDir if opts.alisDir else opts.dataDir
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
@@ -128,18 +133,19 @@ def run(args=None):
     cfg['param_count'] = nn.paramCount()
     dump_config(cfg, opts.cfg_file)
 
-    # Load model if specified
-    if os.path.exists(opts.in_file):
-        with open(opts.in_file, 'r') as fid:
-            SGD.fromFile(fid)
-            nn.fromFile(fid)
-
     # Training
     epoch_file = pjoin(output_dir, 'epoch')
     if os.path.exists(epoch_file):
         start_epoch = int(open(epoch_file, 'r').read()) + 1
     else:
         start_epoch = 0
+
+    # Load model if specified
+    if os.path.exists(opts.in_file):
+        with open(opts.in_file, 'r') as fid:
+            SGD.fromFile(fid)
+            sgd.alpha = sgd.alpha / (opts.anneal ** start_epoch)
+            nn.fromFile(fid)
 
     num_files_file = pjoin(output_dir, 'num_files')
 
@@ -153,7 +159,7 @@ def run(args=None):
                 file_start = int(open(num_files_file, 'r').read().strip())
                 logger.info('Starting from file %d, epoch %d' % (file_start, start_epoch))
         else:
-            open(num_files_file, 'w').write(file_start)
+            open(num_files_file, 'w').write(str(file_start))
 
         for i in xrange(file_start, perm.shape[0]):
             start = time.time()
@@ -168,7 +174,7 @@ def run(args=None):
             # Save parameters and cost
             if (i+1) % opts.save_every == 0:
                 logger.info('Saving parameters')
-                with open(opts.out_file, 'w') as fid:
+                with open(opts.out_file, 'wb') as fid:
                     SGD.toFile(fid)
                     nn.toFile(fid)
                     open(num_files_file, 'w').write('%d' % (i+1))
@@ -178,6 +184,11 @@ def run(args=None):
 
         # Save epoch completed
         open(pjoin(output_dir, 'epoch'), 'w').write(str(k))
+
+        # Save parameters for the epoch
+        with open(opts.out_file + '.epoch{0:02}'.format(k), 'wb') as fid:
+            SGD.toFile(fid)
+            nn.toFile(fid)
 
         SGD.alpha = SGD.alpha / opts.anneal
 

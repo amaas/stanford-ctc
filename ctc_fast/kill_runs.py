@@ -25,7 +25,7 @@ if __name__ == '__main__':
             shutil.rmtree(d)
             continue
 
-        alive = file_alive(log_file, max_dur_sec=30*60)
+        alive = file_alive(log_file, max_dur_sec=60*60)
 
         if not alive:
             run = os.path.basename(d)
@@ -36,6 +36,9 @@ if __name__ == '__main__':
             host = cfg['host']
             pid = cfg['pid']
             print 'Killing run %s, PID %s on %s' % (run, cfg['pid'], cfg['host'])
+            # Kill children (due to async data loader)
+            run_cpu_job(host, 'pkill -TERM -P %s' % pid)
+            # Kill process
             run_cpu_job(host, 'kill -9 %s' % pid)
 
             if args.clear_dirs:

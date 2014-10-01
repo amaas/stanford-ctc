@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         # Check if alive
 
-        alive = file_alive(log_file, max_dur_sec=30*60)
+        alive = file_alive(log_file, max_dur_sec=60*60)
 
         if not alive:
             reboot_run(d, used_gpus)

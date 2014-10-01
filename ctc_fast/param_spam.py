@@ -12,8 +12,10 @@ PARAM_SETTING_LIST = [
     #{'layerSize': 1824, 'inputDim': 15*13, 'rawDim': 21*13, 'run_desc': 'mfcc_context', 'dataDir': TRAIN_DATA_DIR['mfcc']},
     #{'layerSize': 1824, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_context', 'dataDir': TRAIN_DATA_DIR['mfcc']},
     #{'layerSize': 1824, 'inputDim': 15*39, 'rawDim': 41*39, 'run_desc': 'mfcc_deltas', 'dataDir': TRAIN_DATA_DIR['mfcc_delta']},
+    {'layerSize': 1824, 'inputDim': 15*13, 'rawDim': 21*13, 'run_desc': 'mfcc_context_high_step', 'dataDir': TRAIN_DATA_DIR['mfcc'], 'step': '5e-5'},
+    #{'layerSize': 1824, 'inputDim': 15*13, 'rawDim': 21*13, 'run_desc': 'mfcc_context_high_mom', 'dataDir': TRAIN_DATA_DIR['mfcc'], 'momentum': '0.99'},
     #{'layerSize': 3000, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_layer_scaling', 'dataDir': TRAIN_DATA_DIR['mfcc']},
-    {'layerSize': 4000, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_layer_scaling', 'dataDir': TRAIN_DATA_DIR['mfcc']},
+    #{'layerSize': 4000, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_layer_scaling', 'dataDir': TRAIN_DATA_DIR['mfcc']},
     #{'layerSize': 5000, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_layer_scaling', 'dataDir': TRAIN_DATA_DIR['mfcc']},
     #{'layerSize': 6000, 'inputDim': 21*13, 'rawDim': 21*13, 'run_desc': 'mfcc_layer_scaling', 'dataDir': TRAIN_DATA_DIR['mfcc']},
 

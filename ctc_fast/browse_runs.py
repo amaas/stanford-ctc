@@ -43,7 +43,7 @@ def process_run_dir(run_dir, figs=False):
 
     # Alive / not
     log_file = pjoin(run_dir, 'train.log')
-    run_data['alive'] = file_alive(log_file, max_dur_sec=30*60)
+    run_data['alive'] = file_alive(log_file, max_dur_sec=60*60)
 
     # Complete / not
     run_data['complete'] = os.path.exists(pjoin(run_dir, 'sentinel'))
