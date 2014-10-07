@@ -144,7 +144,7 @@ def run(args=None):
     if os.path.exists(opts.in_file):
         with open(opts.in_file, 'r') as fid:
             SGD.fromFile(fid)
-            sgd.alpha = sgd.alpha / (opts.anneal ** start_epoch)
+            SGD.alpha = SGD.alpha / (opts.anneal ** start_epoch)
             nn.fromFile(fid)
 
     num_files_file = pjoin(output_dir, 'num_files')
