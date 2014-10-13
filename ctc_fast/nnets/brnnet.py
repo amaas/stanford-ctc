@@ -7,7 +7,7 @@ import pdb
 class NNet:
 
     def __init__(self,inputDim,outputDim,layerSize,numLayers,maxBatch,
-            train=True,temporalLayer=-1):
+            train=True, temporalLayer=-1, reg=0.0):
         # Initialize cublas
         cm.cublas_init()
 
@@ -18,6 +18,7 @@ class NNet:
         self.layerSizes = [layerSize]*numLayers
         self.maxBatch = maxBatch
         self.train = train
+        self.reg = reg
 
         if not self.train:
             np.seterr(all='ignore')
@@ -172,6 +173,10 @@ class NNet:
         cost, deltas, skip = ctc.ctc_loss(self.probs.numpy_array.astype(np.float64),
                 labels,blank=0)
 
+        if self.reg > 0:
+            for w, b in stack:
+                cost = cost + (self.reg / 2.0) * (w.euclid_norm() ** 2)
+
         if skip:
             return cost,self.grad,skip
 
@@ -182,7 +187,11 @@ class NNet:
         deltasIn,deltasOut = self.deltasC,self.deltasOut
         for w,b in reversed(stack):
             # compute gradient
+            # gradient for w
             cm.dot(deltasIn,self.hActs[i].T,target=grad[i][0])
+            if self.reg > 0:
+                grad[i][0].add_mult(w, alpha=self.reg)
+            # gradient for b
             deltasIn.sum(axis=1,target=grad[i][1])
 
             # compute next layer deltas
@@ -293,7 +302,7 @@ if __name__=='__main__':
     data_dict,alis,keys,_ = loader.loadDataFileDict(1)
     data,labels = data_dict[keys[3]],np.array(alis[keys[3]],dtype=np.int32)
 
-    rnn = NNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=2)
+    rnn = NNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=2, reg=0.01)
     rnn.initParams()
     cost,grad,_ = rnn.costAndGrad(data,labels)
     print "COST %.9f"%cost

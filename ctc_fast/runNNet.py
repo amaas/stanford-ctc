@@ -44,6 +44,8 @@ def run(args=None):
     parser.add_option("--step", dest="step", type="float", default=1e-5)
     parser.add_option("--anneal", dest="anneal", type="float", default=1.3,
                       help="Sets (learning rate := learning rate / anneal) after each epoch.")
+    parser.add_option('--reg', dest='reg', type='float', default=0.0,
+                      help='lambda for L2 regularization of the weight matrices')
 
     # Data
     parser.add_option("--dataDir", dest="dataDir", type="string",
@@ -124,7 +126,7 @@ def run(args=None):
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
 
     nn = rnnet.NNet(opts.inputDim, opts.outputDim, opts.layerSize, opts.numLayers,
-                    opts.maxUttLen, temporalLayer=opts.temporalLayer)
+                    opts.maxUttLen, temporalLayer=opts.temporalLayer, reg=opts.reg)
     nn.initParams()
 
     SGD = sgd.SGD(nn, opts.maxUttLen, alpha=opts.step, momentum=opts.momentum)

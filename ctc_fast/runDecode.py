@@ -118,14 +118,16 @@ def runSeq(opts):
     pkid.close()
 
 
-def runNode(node, node_files_dict):
+def runNode(node, node_files_dict, opts):
+    alisDir = opts.alisDir if opts.alisDir else opts.dataDir
+
     # Create decoding command for each file
     cmds = list()
     fns = node_files_dict[node]
     if len(fns) == 0:
         return None
     for fn in fns:
-        cmd = '%s ../runDecode.py --dataDir %s --numFiles 1 --start_file %d --out_file %s.%d' % (PYTHON_CMD, opts.dataDir, fn, opts.out_file, fn)
+        cmd = '%s ../runDecode.py --dataDir %s --alisDir %s --numFiles 1 --start_file %d --out_file %s.%d' % (PYTHON_CMD, opts.dataDir, alisDir, fn, opts.out_file, fn)
         print cmd
         cmds.append(cmd)
 
@@ -149,7 +151,7 @@ def runParallel(opts):
         node_files_dict[free_nodes[i % len(free_nodes)]].append(i)
 
     # Now for each node run decoding of the files assigned to it
-    Parallel(n_jobs=len(free_nodes))(delayed(runNode)(node, node_files_dict) for node in node_files_dict)
+    Parallel(n_jobs=len(free_nodes))(delayed(runNode)(node, node_files_dict, opts) for node in node_files_dict)
 
     # Now merge the results together into single file like
     # we would get by running sequentially
