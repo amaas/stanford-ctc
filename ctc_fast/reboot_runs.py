@@ -9,8 +9,6 @@ from cluster.config import PYTHON_CMD, SLEEP_SEC, FLAGGED_GPUS
 
 
 def reboot_run(run_dir, used_gpus):
-    if os.path.exists(pjoin(run_dir, 'sentinel')):
-        return
     cfg_file = pjoin(run_dir, 'cfg.json')
 
     # Read in cluster we should be using
@@ -59,6 +57,6 @@ if __name__ == '__main__':
 
         alive = file_alive(log_file, max_dur_sec=60*60)
 
-        if not alive:
+        if not alive and not os.path.exists(pjoin(d, 'sentinel')):
             reboot_run(d, used_gpus)
             time.sleep(SLEEP_SEC)
