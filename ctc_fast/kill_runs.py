@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
         alive = file_alive(log_file, max_dur_sec=60*60)
 
-        if not alive:
+        if not alive and not os.path.exists(pjoin(d, 'sentinel')):
             run = os.path.basename(d)
             print 'loading config'
             print cfg_file
