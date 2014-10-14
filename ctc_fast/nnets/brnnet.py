@@ -1,3 +1,4 @@
+import cPickle as pickle
 import cudamat as cm
 import ctc_fast as ctc
 import numpy as np
@@ -19,6 +20,7 @@ class NNet:
         self.maxBatch = maxBatch
         self.train = train
         self.reg = reg
+        self.regcost = 0.0
 
         if not self.train:
             np.seterr(all='ignore')
@@ -174,8 +176,11 @@ class NNet:
                 labels,blank=0)
 
         if self.reg > 0:
+            self.regcost = 0.0
             for w, b in stack:
-                cost = cost + (self.reg / 2.0) * (w.euclid_norm() ** 2)
+                rc = (self.reg / 2.0) * (w.euclid_norm() ** 2)
+                self.regcost += rc
+                cost = cost + rc
 
         if skip:
             return cost,self.grad,skip
@@ -250,7 +255,6 @@ class NNet:
 	"""
 	Saves only the network parameters to the given fd.
 	"""
-	import cPickle as pickle
         stack = []
         for w,b in self.stack:
             w.copy_to_host()
@@ -259,7 +263,6 @@ class NNet:
 	pickle.dump(stack,fid)
 
     def fromFile(self,fid):
-	import cPickle as pickle
         stack = pickle.load(fid)
         for (w,b),(wi,bi) in zip(self.stack,stack):
             w.copy_to_host()

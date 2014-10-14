@@ -43,6 +43,6 @@ VIEWER_DIR = '/afs/cs.stanford.edu/u/zxie/www/ctc'
 BROWSE_RUNS_KEYS = [
     'run', 'host', 'pid', 'cer', 'wer', 'cost', 'numLayers',
     'layerSize', 'temporalLayer', 'momentum', 'step', 'anneal',
-    'param_count', 'inputDim', 'rawDim', 'outputDim',
+    'param_count', 'inputDim', 'rawDim', 'outputDim', 'reg',
     'epoch', 'num_files', 'complete', 'alive', 'git_rev', 'run_desc'
 ]

@@ -1,7 +1,6 @@
 import os
 import time
 import argparse
-import string
 from run_cfg import RUN_DIR, CTC_DIR
 from os.path import join as pjoin
 from run_utils import TimeString, file_alive, get_run_dirs, load_config
@@ -10,6 +9,8 @@ from cluster.config import PYTHON_CMD, SLEEP_SEC, FLAGGED_GPUS
 
 
 def reboot_run(run_dir, used_gpus):
+    if os.path.exists(pjoin(run_dir, 'sentinel')):
+        return
     cfg_file = pjoin(run_dir, 'cfg.json')
 
     # Read in cluster we should be using

@@ -182,7 +182,10 @@ def run(args=None):
                     open(num_files_file, 'w').write('%d' % (i+1))
                 logger.info('Done saving parameters')
                 with open(pjoin(output_dir, 'last_cost'), 'w') as fid:
-                    fid.write(str(SGD.expcost[-1]))
+                    if opts.reg > 0.0:
+                        fid.write(str(SGD.expcost[-1] - SGD.regcost[-1]))
+                    else:
+                        fid.write(str(SGD.expcost[-1]))
 
         # Save epoch completed
         open(pjoin(output_dir, 'epoch'), 'w').write(str(k))

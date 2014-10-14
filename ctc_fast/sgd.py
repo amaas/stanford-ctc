@@ -31,6 +31,7 @@ class SGD:
 
         self.costt = []
         self.expcost = []
+        self.regcost = []
 
     def toFile(self, fid):
         stack = []
@@ -116,6 +117,13 @@ class SGD:
                 else:
                     self.expcost.append(cost)
                 self.costt.append(cost)
+
+                if self.model.reg > 0.0:
+                    rc = self.model.regcost
+                    if len(self.regcost) > 0:
+                        self.regcost.append(0.01*rc + 0.99*self.regcost[-1])
+                    else:
+                        self.regcost.append(rc)
 
             # velocity = mom*velocity - alpha*grad
             if self.optimizer == 'nesterov':
