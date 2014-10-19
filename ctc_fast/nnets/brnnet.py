@@ -177,7 +177,7 @@ class NNet:
 
         if self.reg > 0:
             self.regcost = 0.0
-            for w, b in stack:
+            for w, b in self.stack:
                 rc = (self.reg / 2.0) * (w.euclid_norm() ** 2)
                 self.regcost += rc
                 cost = cost + rc
@@ -241,6 +241,10 @@ class NNet:
 
             deltasIn,deltasOut = deltasOut,deltasIn
             i -= 1
+        if self.reg > 0:
+            if self.temporalLayer > 0:
+                dwtf.add_mult(wtf, alpha=self.reg)
+                dwtb.add_mult(wtb, alpha=self.reg)
 
         return cost,self.grad,skip
 
@@ -276,23 +280,26 @@ class NNet:
         cost,grad,_ = self.costAndGrad(data,labels)
         # TODO randomize grad check selection
         for param,delta in zip(self.stack,grad):
+            print param[0].shape
             w,b = param
             dw,db = delta
             dw.copy_to_host()
             w.copy_to_host()
             for i in xrange(w.shape[0]):
-                for j in xrange(w.shape[1]):
+                # Only grad check small section
+                for j in xrange(min(w.shape[1], 10)):
                     w.numpy_array[i,j] += epsilon
                     w.copy_to_device()
                     costP,_,_ = self.costAndGrad(data,labels)
                     numGrad = (costP - cost) / epsilon
                     w.numpy_array[i,j] -= epsilon
+                    w.copy_to_device()
                     print "Analytic %f, Numeric %f"%(dw.numpy_array[i,j],numGrad)
 
 if __name__=='__main__':
     import dataLoader as dl
     np.random.seed(33)
-    layerSize = 40
+    layerSize = 5
     numLayers = 3
 
     dataDir = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/"
@@ -305,7 +312,7 @@ if __name__=='__main__':
     data_dict,alis,keys,_ = loader.loadDataFileDict(1)
     data,labels = data_dict[keys[3]],np.array(alis[keys[3]],dtype=np.int32)
 
-    rnn = NNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=2, reg=0.01)
+    rnn = NNet(inputDim,outputDim,layerSize,numLayers,maxUttLen,temporalLayer=2, reg=1.0)
     rnn.initParams()
     cost,grad,_ = rnn.costAndGrad(data,labels)
     print "COST %.9f"%cost
