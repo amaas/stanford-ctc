@@ -49,9 +49,14 @@ def main(args):
     ref_lens = [len(s) for s in refs]
 
     totdist = 0.0
+    num_sents_correct = 0
+    correct_sents_len = 0
     for (hyp, ref, hypscore, refscore) in zip(hyps, refs, hypscores, refscores):
         dist, ins, dels, subs, corr = ed.edit_distance(ref, hyp)
         print 'Distance %d/%d, hyp score %f, ref score %f' % (dist, len(ref), hypscore, refscore)
+        if dist == 0:
+            num_sents_correct += 1
+            correct_sents_len += len(ref)
         totdist += dist
 
     print 'Avg ref score %f' % (sum(refscores) / len(refscores))
@@ -61,6 +66,8 @@ def main(args):
     print 'Average len ref: %f' % np.mean(ref_lens)
 
     print 'CER: %f' % (100.0 * totdist / np.sum(numphones))
+    print '%d/%d sentences correct' % (num_sents_correct, len(hyps))
+    print 'Average length of correct sentence: %f' % (correct_sents_len / float(num_sents_correct))
 
 
 if __name__ == '__main__':
