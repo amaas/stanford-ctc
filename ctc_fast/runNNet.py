@@ -97,6 +97,8 @@ def run(args=None):
     if opts.test:
         cfg['dataDir'] = opts.dataDir
         cfg['numFiles'] = opts.numFiles
+    if 'reg' not in cfg:
+        cfg['reg'] = 0.0
 
     # Logging
 

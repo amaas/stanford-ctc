@@ -7,6 +7,8 @@ np.seterr(all='raise')
 import collections
 from decoder_utils import int_to_char, load_char_map
 from decoder_config import LM_ORDER
+from rnn import one_hot
+
 
 cdef double combine(double a,double b,double c=float('-inf')):
     cdef double psum = math.exp(a) + math.exp(b) + math.exp(c)
@@ -41,12 +43,31 @@ cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER
     s = int_to_char(prefix[-1:-1-order:-1], char_map)
     if len(s) < order - 1:
         s = s + ['<s>']
-    #print s
     return lm.logprob_strings(char_map[query_char], s)
 
 
+def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
+    s = int_to_char(prefix[-order+1:], char_map)
+    if len(s) < order - 1:
+        s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
+    #print s
+    # Hack here to deal w/ vocalized-noise still popping up, #FIXME
+    data = np.array([char_inds[c] if c in char_inds else char_inds['<null>'] for c in s], dtype=np.int8).reshape((-1, 1))
+    #data = np.expand_dims(data, 1)
+    data = one_hot(data, len(char_map))
+    #print data.shape
+    _, probs = lm.cost_and_grad(data, None)
+    probs = probs[:, -1, :]
+    data = data.reshape((data.size, 1))
+    #inds = dict((v, k) for (k, v) in char_inds.iteritems())
+    #for k in range(probs.shape[0]):
+        #print inds[k], probs[k]
+    #assert False
+    return np.log10(probs.ravel())
+
+
 def decode_clm(double[::1,:] probs not None, lm,
-                unsigned int beam=40, double alpha=1.0, double beta=0.0):
+                unsigned int beam=40, double alpha=1.0, double beta=0.0, char_inds=None):
 
     cdef unsigned int N = probs.shape[0]
     cdef unsigned int T = probs.shape[1]
@@ -54,6 +75,7 @@ def decode_clm(double[::1,:] probs not None, lm,
     cdef float v0, v1, v2, v3
 
     char_map = load_char_map()
+    char_inds['[space]'] = char_inds[' ']
 
     keyFn = lambda x: combine(x[1][0],x[1][1]) + beta * x[1][2]
     initFn = lambda : [float('-inf'),float('-inf'),0]
@@ -63,6 +85,8 @@ def decode_clm(double[::1,:] probs not None, lm,
     Hold = collections.defaultdict(initFn)
 
     # loop over time
+    cdef double lm_prob_sum = 0
+    cdef long prob_count = 0
     for t in xrange(T):
         Hcurr = dict(Hcurr)
         Hnext = collections.defaultdict(initFn)
@@ -78,13 +102,26 @@ def decode_clm(double[::1,:] probs not None, lm,
                 # Handle collapsing
                 valsP[0] = combine(v0+probs[prefix[-1],t],valsP[0])
 
+            cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
+
             for i in xrange(1,N):
                 nprefix = tuple(list(prefix) + [i])
                 valsN = Hnext[nprefix]
 
                 # query the LM for final char score
-                lm_prob = alpha * lm_score_final_char(lm, char_map, prefix, i)
                 #lm_prob = alpha*lm_placeholder(i,prefix)
+                #print char_map
+                #print char_inds
+                #assert False
+                if char_map[i] not in char_inds:
+                    continue
+                lm_prob = alpha * cprobs[char_inds[char_map[i]]]
+                #lm_prob = alpha * lm_score_final_char(lm, char_map, prefix, i)
+                lm_prob_sum += lm_prob
+                prob_count += 1
+                #print probs[i, t]
+                #print lm_prob
+                #assert False
 
                 valsN[2] = numC + 1
 
@@ -107,5 +144,4 @@ def decode_clm(double[::1,:] probs not None, lm,
 
         Hold = Hnext
         Hcurr = sorted(Hnext.iteritems(), key=keyFn, reverse=True)[:beam]
-
     return list(Hcurr[0][0]),keyFn(Hcurr[0])

@@ -15,6 +15,12 @@ from srilm import LM
 if DATA_SUBSET == 'eval2000':
     from decoder.decoder_config import SWBD_SUBSET
 
+#from nclm import NCLM, NCLMHyperparams
+from rnn import RNN, RNNHyperparams
+from run_utils import load_config
+from optimizer import OptimizerHyperparams
+from char_corpus import CharCorpus
+
 '''
 Take probs outputted by runNNet.py forward props and run decoding
 Afterwards use computeStats.py to get error metrics
@@ -48,7 +54,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=1.0, beta=2.0, beam=10, method='clm2', clm=lm)
+            alpha=1.0, beta=1.5, beam=10, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 
@@ -67,11 +73,21 @@ def runSeq(opts):
     refscores = list()
     numphones = list()
 
-    #clm = kenlm.LanguageModel(LM_ARPA_FILE)
-    print 'Loading language model...'
-    print LM_ARPA_FILE
-    clm = LM(LM_ARPA_FILE)
-    print 'Done.'
+    #cfg_file = '/afs/cs.stanford.edu/u/zxie/scail_data_zxie/nclm_models/10/cfg.json'
+    cfg_file = '/deep/u/zxie/rnnlm/1/cfg.json'
+    cfg = load_config(cfg_file)
+    #model_hps = NCLMHyperparams()
+    model_hps = RNNHyperparams()
+    opt_hps = OptimizerHyperparams()
+    model_hps.set_from_dict(cfg)
+    opt_hps.set_from_dict(cfg)
+    dataset = CharCorpus(model_hps.T, model_hps.batch_size, subset='dev')
+
+    #clm = NCLM(dataset, model_hps, opt_hps, train=False, opt='nag')
+    clm = RNN(dataset, model_hps, opt_hps, train=False, opt='nag')
+    #with open('/scail/data/group/deeplearning/u/zxie/nclm_models/10/params.pk', 'rb') as fin:
+    with open('/deep/u/zxie/rnnlm/1/params.pk', 'rb') as fin:
+        clm.from_file(fin)
     #clm = None
 
     for i in range(opts.start_file, opts.start_file + opts.numFiles):
@@ -89,7 +105,7 @@ def runSeq(opts):
         probs_dict = pickle.load(ll_fid)
 
         # Parallelize decoding over utterances
-        print 'Decoding utterances in parallel, n_jobs=%d' % NUM_CPUS
+        print 'Decoding utterances in parallel, n_jobs=%d, file=%d' % (NUM_CPUS, i)
         decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map, lm=clm) for k in keys)
 
         for k, (hyp, ref, hypscore, refscore) in zip(keys, decoded_utts):
@@ -145,7 +161,7 @@ def runParallel(opts):
     # TODO Get the CER and other stats as a post-processing step
 
     # Get free machines and split the files evenly between them
-    free_nodes = get_free_nodes('gorgon')  # PARAM
+    free_nodes = get_free_nodes('deep')  # PARAM
     node_files_dict = defaultdict(list)
     for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
         node_files_dict[free_nodes[i % len(free_nodes)]].append(i)
@@ -156,15 +172,40 @@ def runParallel(opts):
     # Now merge the results together into single file like
     # we would get by running sequentially
     concat_list = list()
+    hyps = list()
+    refs = list()
+    hypscores = list()
+    refscores = list()
+    numphones = list()
     for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
         fi = '%s.%d' % (opts.out_file, i)
+        fi_pk = fi.replace('.txt', '.pk')
         assert os.path.exists(fi), '%s does not exist' % fi
+        assert os.path.exists(fi_pk), '%s does not exist' % fi_pk
         with open(fi, 'r') as f:
             concat_list.append(f.read().strip())
+        with open(fi_pk, 'rb') as f:
+            h = pickle.load(f)
+            r = pickle.load(f)
+            hs = pickle.load(f)
+            rs = pickle.load(f)
+            np = pickle.load(f)
+            hyps += h
+            refs += r
+            hypscores += hs
+            refscores += rs
+            numphones += np
         # Cleanup
         os.remove(fi)
+        os.remove(fi_pk)
     with open(opts.out_file, 'w') as fout:
         fout.write('\n'.join(concat_list))
+    with open(opts.out_file.replace('.txt', '.pk'), 'wb') as fout:
+        pickle.dump(hyps, fout)
+        pickle.dump(refs, fout)
+        pickle.dump(hypscores, fout)
+        pickle.dump(refscores, fout)
+        pickle.dump(numphones, fout)
 
 
 if __name__ == '__main__':
@@ -174,7 +215,7 @@ if __name__ == '__main__':
 
     # Data
     parser.add_option("--dataDir", dest="dataDir", type="string",
-                      default="/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
+                      default="/deep/group/speech/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/train_ctc/")
     parser.add_option('--alisDir', dest='alisDir', type='string', default='')
     parser.add_option("--numFiles", dest="numFiles", type="int", default=384)
     parser.add_option(

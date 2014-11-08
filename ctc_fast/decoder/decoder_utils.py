@@ -1,8 +1,7 @@
 import time
 import numpy as np
-import pickle
+import cPickle as pickle
 import dataLoader as dl
-from nnets.brnnet import NNet as BRNNet
 from decoder_config import get_brnn_model_file, INPUT_DIM, OUTPUT_DIM,\
         RAW_DIM, LAYER_SIZE, NUM_LAYERS, MAX_UTT_LEN, TEMPORAL_LAYER,\
         DATA_DIR, SPACE, CHARMAP_PATH, LM_ARPA_FILE
@@ -10,6 +9,7 @@ import bg_decoder
 import ctc_fast as ctc
 #import kenlm
 from fastdecode import decode_lm_wrapper
+from dset_paths import CHAR_CORPUS_VOCAB_FILE
 
 
 def load_chars():
@@ -41,6 +41,7 @@ def load_data(fnum=1):
 
 
 def load_nnet():
+    from nnets.brnnet import NNet as BRNNet
     rnn = BRNNet(INPUT_DIM, OUTPUT_DIM, LAYER_SIZE, NUM_LAYERS,
             MAX_UTT_LEN, train=False, temporalLayer=TEMPORAL_LAYER)
     rnn.initParams()
@@ -67,6 +68,8 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm2', clm=None):
     # TODO Couldn't find score_sentence
     #refScore = ctc.score_sentence(probs,labels)
     #refScore += alpha*self.lm.score_tg(" ".join(sentence)) + beta*len(sentence)
+
+    char_inds = pickle.load(open(CHAR_CORPUS_VOCAB_FILE, 'rb'))
 
     # Various decoding options
 
@@ -96,7 +99,7 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm2', clm=None):
         # Character LM
         # NOTE need to restructure decoders into classes
         hyp, hypScore = clm_decoder2.decode_clm(probs, clm, beam=beam,
-                alpha=alpha, beta=beta)
+                alpha=alpha, beta=beta, char_inds=char_inds)
     elif method == 'fast':
         hyp, hypScore = decode_lm_wrapper(probs, beam, alpha, beta)
     else:

@@ -141,7 +141,7 @@ def test(opts):
     print "PER : %f"%(100*totdist/float(numphones))
 
 def get_phone_map_swbd():
-    kaldi_base = "/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/"
+    kaldi_base = "/deep/group/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/"
     with open(kaldi_base+'ctc-utils/chars.txt','r') as fid:
 	labels = [l.strip().split() for l in fid.readlines()]
         labels = dict((int(k),v) for v,k in labels)
