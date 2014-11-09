@@ -6,8 +6,8 @@ CTC_DIR = os.path.dirname(os.path.abspath(__file__))
 # See also default argument values in runNNet.py
 
 RUN_DIR = '/scail/data/group/deeplearning/u/zxie/ctc_models'
-SWBD_EXP_DIR = '/scail/group/deeplearning/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/'
-SWBD_EXP_DIR_DELTA = '/scail/group/deeplearning/speech/asamar/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/'
+SWBD_EXP_DIR = '/deep/group/speech/awni/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/'
+SWBD_EXP_DIR_DELTA = '/deep/group/speech/asamar/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/'
 
 # Feature types can be mfcc or fbank for now
 # Different configuration for each

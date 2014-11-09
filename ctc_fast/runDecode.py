@@ -54,7 +54,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=1.0, beta=1.5, beam=10, method='clm2', clm=lm)
+            alpha=1.0, beta=1.5, beam=40, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 
@@ -72,6 +72,7 @@ def runSeq(opts):
     hypscores = list()
     refscores = list()
     numphones = list()
+    subsets = list()
 
     #cfg_file = '/afs/cs.stanford.edu/u/zxie/scail_data_zxie/nclm_models/10/cfg.json'
     cfg_file = '/deep/u/zxie/rnnlm/1/cfg.json'
@@ -121,6 +122,7 @@ def runSeq(opts):
             hypscores.append(hypscore)
             refscores.append(refscore)
             numphones.append(len(alis[k]))
+            subsets.append('callhm' if k.startswith('en') else 'swbd')
 
     fid.close()
 
@@ -131,6 +133,7 @@ def runSeq(opts):
     pickle.dump(hypscores, pkid)
     pickle.dump(refscores, pkid)
     pickle.dump(numphones, pkid)
+    pickle.dump(subsets, pkid)
     pkid.close()
 
 
@@ -177,6 +180,7 @@ def runParallel(opts):
     hypscores = list()
     refscores = list()
     numphones = list()
+    subsets = list()
     for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
         fi = '%s.%d' % (opts.out_file, i)
         fi_pk = fi.replace('.txt', '.pk')
@@ -190,11 +194,13 @@ def runParallel(opts):
             hs = pickle.load(f)
             rs = pickle.load(f)
             np = pickle.load(f)
+            ss = pickle.load(f)
             hyps += h
             refs += r
             hypscores += hs
             refscores += rs
             numphones += np
+            subsets += ss
         # Cleanup
         os.remove(fi)
         os.remove(fi_pk)
@@ -206,6 +212,7 @@ def runParallel(opts):
         pickle.dump(hypscores, fout)
         pickle.dump(refscores, fout)
         pickle.dump(numphones, fout)
+        pickle.dump(subsets, fout)
 
 
 if __name__ == '__main__':
