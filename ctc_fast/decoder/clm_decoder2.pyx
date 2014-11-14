@@ -55,10 +55,10 @@ def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
     data = np.array([char_inds[c] if c in char_inds else char_inds['<null>'] for c in s], dtype=np.int8).reshape((-1, 1))
     #data = np.expand_dims(data, 1)
     data = one_hot(data, len(char_map))
-    #print data.shape
+    data = data.reshape((-1, data.shape[2]))
     _, probs = lm.cost_and_grad(data, None)
-    probs = probs[:, -1, :]
-    data = data.reshape((data.size, 1))
+    #probs = probs[:, -1, :]
+    #data = data.reshape((data.size, 1))
     #inds = dict((v, k) for (k, v) in char_inds.iteritems())
     #for k in range(probs.shape[0]):
         #print inds[k], probs[k]
@@ -91,7 +91,7 @@ def decode_clm(double[::1,:] probs not None, lm,
         Hcurr = dict(Hcurr)
         Hnext = collections.defaultdict(initFn)
 
-        for prefix,(v0,v1,numC) in Hcurr.iteritems():
+        for prefix, (v0, v1, numC) in Hcurr.iteritems():
 
             # CHUNK 1
             valsP = Hnext[prefix]
@@ -104,24 +104,16 @@ def decode_clm(double[::1,:] probs not None, lm,
 
             cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
 
-            for i in xrange(1,N):
+            for i in xrange(1, N):
+                if char_map[i] not in char_inds:
+                    continue
+
                 nprefix = tuple(list(prefix) + [i])
                 valsN = Hnext[nprefix]
 
-                # query the LM for final char score
-                #lm_prob = alpha*lm_placeholder(i,prefix)
-                #print char_map
-                #print char_inds
-                #assert False
-                if char_map[i] not in char_inds:
-                    continue
                 lm_prob = alpha * cprobs[char_inds[char_map[i]]]
-                #lm_prob = alpha * lm_score_final_char(lm, char_map, prefix, i)
                 lm_prob_sum += lm_prob
                 prob_count += 1
-                #print probs[i, t]
-                #print lm_prob
-                #assert False
 
                 valsN[2] = numC + 1
 
@@ -143,5 +135,13 @@ def decode_clm(double[::1,:] probs not None, lm,
                     valsN[0] = combine(v2+probs[i,t],valsN[0])
 
         Hold = Hnext
+
+        if t == T - 1:
+            # Apply the end of sentence </s> LM probability as well
+            for prefix, (v0, v1, numC) in Hnext.iteritems():
+                cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
+                lm_prob = cprobs[char_inds['</s>']]
+                Hnext[prefix][0] = combine(v0 + lm_prob, v1 + lm_prob, Hnext[prefix][0])
+
         Hcurr = sorted(Hnext.iteritems(), key=keyFn, reverse=True)[:beam]
     return list(Hcurr[0][0]),keyFn(Hcurr[0])

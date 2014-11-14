@@ -1,25 +1,30 @@
-
 def load_hyp_txt(file="mergehyp.txt"):
-    with open(file,'r') as fid:
+    with open(file, 'r') as fid:
         lines = fid.readlines()
     return lines
 
 def write_ctm():
-    fid = open("hyp.ctm",'w')
+    fid = open('hyp.ctm', 'w')
     lines = load_hyp_txt()
-    format = "%s %s 1 %d %d %s\n"
+    form = '%s %s %0.2f %0.2f %s\n'
     for l in lines:
         l = l.strip().split()
-        k,words = l[0],l[1:]
-        if ('-a' in k):
+        k, words = l[0], l[1:]
+        times = k.split('_')[2]
+        start_time, end_time = [int(x) / 100.0 for x in times.split('-')]
+        duration = end_time - start_time
+        #dur_split = duration / max(float(len(words)), 1.0)
+        if ('-a_' in k):
             channel = 'A'
         else:
             channel = 'B'
         t = 0
         for word in words:
-            fid.write(format%(k[0:7], channel, t, 1, word))
+            fid.write(form % (k[0:7], channel, start_time, duration, word))
+            #fid.write(form % (k[0:7], channel, start_time, dur_split, word))
+            #start_time += dur_split
             t += 1
     fid.close()
 
-if __name__=='__main__':
+if __name__ == '__main__':
     write_ctm()

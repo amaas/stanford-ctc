@@ -54,7 +54,51 @@ def disp_err_corr(hyp_corr, ref_corr):
     print ref_str
 
 
-def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subsets, subset=None):
+def replace_contractions(utt):
+    if len(utt):
+        while len(utt) and utt[-1] == '[space]':
+            utt = utt[:-1]
+        while len(utt) and utt[0] == '[space]':
+            utt = utt[1:]
+
+    # TODO Replace in training text instead
+    utt_str = ''.join([c if c != '[space]' else ' ' for c in utt])
+
+    utt_str = utt_str.replace('can\'t', 'cannot')
+    utt_str = utt_str.replace('let\'s', 'let us')
+
+    # Possessive vs " is"
+    utt_str = utt_str.replace('ere\'s', 'ere is')
+    utt_str = utt_str.replace('that\'s', 'that is')
+    utt_str = utt_str.replace('he\'s', 'he is')
+    utt_str = utt_str.replace('it\'s', 'it is')
+    utt_str = utt_str.replace('how\'s', 'how is')
+    utt_str = utt_str.replace('what\'s', 'what is')
+    utt_str = utt_str.replace('when\'s', 'when is')
+    utt_str = utt_str.replace('why\'s', 'why is')
+
+    utt_str = utt_str.replace('\'re', ' are')
+
+    utt_str = utt_str.replace('i\'m', 'i am')
+    utt_str = utt_str.replace('\'ll', ' will')
+    utt_str = utt_str.replace('\'d', ' would')  # had / would ambiguity
+    utt_str = utt_str.replace('n\'t', ' not')
+    utt_str = utt_str.replace('\'ve', ' have')
+
+    ''' Different between swbd and callhm?
+    utt_str = utt_str.replace('uh-huh', 'um-hum')
+    utt_str = utt_str.replace('uh-hum', 'um-hum')
+    '''
+    utt_str = utt_str.replace(' uh', '')
+    utt_str = utt_str.replace(' um', '')
+    utt_str = utt_str.replace('uh ', '')
+    utt_str = utt_str.replace('um ', '')
+
+    utt = [c if c != ' ' else '[space]' for c in list(utt_str)]
+    return utt
+
+
+def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subsets, subset=None, display=False):
     # Filter by subset
     if subset:
         print 'USING SUBSET: %s' % subset
@@ -72,19 +116,19 @@ def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subse
     hyp_lens = [len(s) for s in hyps]
     ref_lens = [len(s) for s in refs]
 
-    max_hyp_len = max(hyp_lens)
+    max_hyp_len = max([len(hyp) for hyp in hyps])
     tot_errs_by_pos = np.zeros(max_hyp_len)
     counts_by_pos = np.zeros(max_hyp_len, dtype=np.int32)
 
     tot_dist = tot_eq = tot_ins = tot_dels = tot_subs = 0.0
     num_sents_correct = 0
     correct_sents_len = 0
-    frac_wrong = list()
 
     #pbar = ProgressBar(maxval=len(hyps)).start()
 
     k = 0
     for (hyp, ref, hypscore, refscore) in zip(hyps, refs, hypscores, refscores):
+        #hyp = replace_contractions(hyp)
         dist, eq, ins, dels, subs, errs_by_pos, hyp_corr, ref_corr = ed(hyp, ref)
         tot_eq += eq
         tot_ins += ins
@@ -99,11 +143,10 @@ def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subse
             num_sents_correct += 1
             correct_sents_len += len(ref)
         tot_dist += dist
-        # NOTE Smoothing
-        frac_wrong.append(dist / float(len(ref) + 1.0))
 
-        disp_err_corr(hyp_corr, ref_corr)
-        print
+        if display:
+            disp_err_corr(hyp_corr, ref_corr)
+            print
 
     '''
     Display aggregate stats
@@ -116,9 +159,9 @@ def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subse
     print 'avg ref score: %f' % (sum(refscores) / len(refscores))
     print 'avg hyp score: %f' % (sum(hypscores) / len(hypscores))
 
-    tot_hyp_len = float(np.sum(hyp_lens))
+    tot_comp_len = float(np.sum([max(h, r) for (h, r) in zip(hyp_lens, ref_lens)]))
     print 'frac eq: %f ins: %f del: %f sub: %f' %\
-        tuple(np.array([tot_eq, tot_ins, tot_dels, tot_subs]) / tot_hyp_len)
+        tuple(np.array([tot_eq, tot_ins, tot_dels, tot_subs]) / tot_comp_len)
 
     print 'CER: %f' % (100.0 * tot_dist / np.sum(numphones))
 
@@ -144,12 +187,13 @@ def main(args):
     subsets = None
     fid.close()
 
-    compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subsets, subset=None)
+    compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subsets, subset=None, display=args.display)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('pk_file', default='hyp.pk', help='Pickle file with data')
+    parser.add_argument('--display', action='store_true')
     args = parser.parse_args()
     main(args)

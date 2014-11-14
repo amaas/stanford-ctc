@@ -6,20 +6,16 @@ import cPickle as pickle
 from collections import defaultdict
 from joblib import Parallel, delayed
 from decoder.decoder_config import SPACE, SCAIL_DATA_DIR,\
-        INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET, LM_ARPA_FILE
+        INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET
 from cluster.config import NUM_CPUS, CLUSTER_DIR, PYTHON_CMD
 from cluster.utils import get_free_nodes, run_cpu_job
 from decoder.decoder_utils import decode
-#import kenlm
-from srilm import LM
 if DATA_SUBSET == 'eval2000':
     from decoder.decoder_config import SWBD_SUBSET
-
-#from nclm import NCLM, NCLMHyperparams
-from rnn import RNN, RNNHyperparams
+from model_utils import get_model_class_and_params
 from run_utils import load_config
 from optimizer import OptimizerHyperparams
-from char_corpus import CharCorpus
+from errorAnalysis import replace_contractions
 
 '''
 Take probs outputted by runNNet.py forward props and run decoding
@@ -54,7 +50,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=1.0, beta=1.5, beam=40, method='clm2', clm=lm)
+            alpha=3.0, beta=1.5, beam=200, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 
@@ -74,20 +70,15 @@ def runSeq(opts):
     numphones = list()
     subsets = list()
 
-    #cfg_file = '/afs/cs.stanford.edu/u/zxie/scail_data_zxie/nclm_models/10/cfg.json'
-    cfg_file = '/deep/u/zxie/rnnlm/1/cfg.json'
+    cfg_file = '/deep/u/zxie/dnn/3/cfg.json'
     cfg = load_config(cfg_file)
-    #model_hps = NCLMHyperparams()
-    model_hps = RNNHyperparams()
+    model_class, model_hps = get_model_class_and_params('dnn')
     opt_hps = OptimizerHyperparams()
     model_hps.set_from_dict(cfg)
     opt_hps.set_from_dict(cfg)
-    dataset = CharCorpus(model_hps.T, model_hps.batch_size, subset='dev')
 
-    #clm = NCLM(dataset, model_hps, opt_hps, train=False, opt='nag')
-    clm = RNN(dataset, model_hps, opt_hps, train=False, opt='nag')
-    #with open('/scail/data/group/deeplearning/u/zxie/nclm_models/10/params.pk', 'rb') as fin:
-    with open('/deep/u/zxie/rnnlm/1/params.pk', 'rb') as fin:
+    clm = model_class(None, model_hps, opt_hps, train=False, opt='nag')
+    with open('/deep/u/zxie/dnn/3/params.pk', 'rb') as fin:
         clm.from_file(fin)
     #clm = None
 
@@ -115,6 +106,7 @@ def runSeq(opts):
             if hypscore is None:
                 hypscore = 0.0
             hyp = [phone_map[h] for h in hyp]
+            hyp = replace_contractions(hyp)
             fid.write(k + ' ' + ' '.join(hyp) + '\n')
 
             hyps.append(hyp)

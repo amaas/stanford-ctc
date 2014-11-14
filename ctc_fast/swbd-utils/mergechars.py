@@ -7,7 +7,7 @@ with open('hyp.txt','r') as fid:
 
 fid = open('mergehyp.txt','w')
 
-def averageWords(text_f="/afs/cs.stanford.edu/u/awni/swbd/data/dev/text_ctc"):
+def averageWords(text_f="/afs/cs.stanford.edu/u/awni/swbd/data/eval2000/text_ctc"):
     with open(text_f,'r') as fid:
         lines = [l.strip().split()[1:] for l in fid.readlines()]
         numUtts = float(len(lines))

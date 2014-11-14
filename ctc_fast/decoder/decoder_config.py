@@ -43,7 +43,7 @@ elif DATASET == 'swbd':
     SPECIALS_LIST = frozenset(['[vocalized-noise]', '[laughter]', '[space]', '[noise]'])
     CHARMAP_PATH = pjoin(EGS_DIR, 'swbd/s5b/ctc-utils/')
 
-LM_ORDER = 17
+LM_ORDER = 20
 LM_NUM_FILES = 20
 #LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.%d.big_discounts.arpa' % (LM_ORDER, LM_NUM_FILES)
 LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.7g.20.big_discounts.arpa'

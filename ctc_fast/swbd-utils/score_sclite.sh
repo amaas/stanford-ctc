@@ -3,14 +3,14 @@
 # begin configuration section.
 # TODO Handle LMWT properly
 
-KALDI_ROOT=/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk
+# Verbose
+set -x
+
+KALDI_ROOT=/deep/group/speech/zxie/kaldi-stanford/kaldi-trunk
 data=$KALDI_ROOT/egs/swbd/s5b/data/eval2000
 dir=$1
 ctmFile=$2
-cmd=/scail/group/deeplearning/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/utils/run.pl
-
-# Verbose
-set -x
+cmd=/deep/group/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/utils/run.pl
 
 hubscr=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
