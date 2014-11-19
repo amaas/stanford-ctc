@@ -50,7 +50,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     probs = probs.astype(np.float64)
 
     hyp, hypscore, truescore = decode(probs,
-            alpha=3.0, beta=1.5, beam=200, method='clm2', clm=lm)
+            alpha=3.0, beta=1.5, beam=100, method='clm2', clm=lm)
 
     return (hyp, ref, hypscore, truescore)
 
@@ -58,6 +58,8 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
 def runSeq(opts):
     fid = open(opts.out_file, 'w')
     phone_map = get_char_map(opts.dataDir)
+    print phone_map
+    print len(phone_map)
 
     alisDir = opts.alisDir if opts.alisDir else opts.dataDir
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
@@ -70,7 +72,7 @@ def runSeq(opts):
     numphones = list()
     subsets = list()
 
-    cfg_file = '/deep/u/zxie/dnn/3/cfg.json'
+    cfg_file = '/deep/u/zxie/dnn/6/cfg.json'
     cfg = load_config(cfg_file)
     model_class, model_hps = get_model_class_and_params('dnn')
     opt_hps = OptimizerHyperparams()
@@ -78,7 +80,7 @@ def runSeq(opts):
     opt_hps.set_from_dict(cfg)
 
     clm = model_class(None, model_hps, opt_hps, train=False, opt='nag')
-    with open('/deep/u/zxie/dnn/3/params.pk', 'rb') as fin:
+    with open('/deep/u/zxie/dnn/6/params.pk', 'rb') as fin:
         clm.from_file(fin)
     #clm = None
 

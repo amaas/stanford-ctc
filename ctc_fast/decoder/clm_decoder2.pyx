@@ -51,8 +51,7 @@ def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
     if len(s) < order - 1:
         s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
     #print s
-    # Hack here to deal w/ vocalized-noise still popping up, #FIXME
-    data = np.array([char_inds[c] if c in char_inds else char_inds['<null>'] for c in s], dtype=np.int8).reshape((-1, 1))
+    data = np.array([char_inds[c] for c in s], dtype=np.int8).reshape((-1, 1))
     #data = np.expand_dims(data, 1)
     data = one_hot(data, len(char_map))
     data = data.reshape((-1, data.shape[2]))
@@ -86,7 +85,6 @@ def decode_clm(double[::1,:] probs not None, lm,
 
     # loop over time
     cdef double lm_prob_sum = 0
-    cdef long prob_count = 0
     for t in xrange(T):
         Hcurr = dict(Hcurr)
         Hnext = collections.defaultdict(initFn)
@@ -113,7 +111,6 @@ def decode_clm(double[::1,:] probs not None, lm,
 
                 lm_prob = alpha * cprobs[char_inds[char_map[i]]]
                 lm_prob_sum += lm_prob
-                prob_count += 1
 
                 valsN[2] = numC + 1
 

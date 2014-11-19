@@ -172,6 +172,10 @@ def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
         # ignore blanks
         if b == blank:
             continue
+        # FIXME ignore some special characters
+        # noise, laughter, vocalized-noise
+        if b == 1 or b == 2 or b == 8:
+            continue
         # ignore repeats
         elif i != 0 and  b == best_path[i-1]:
             continue

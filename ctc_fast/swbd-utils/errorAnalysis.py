@@ -55,15 +55,15 @@ def disp_err_corr(hyp_corr, ref_corr):
 
 
 def replace_contractions(utt):
-    if len(utt):
-        while len(utt) and utt[-1] == '[space]':
-            utt = utt[:-1]
-        while len(utt) and utt[0] == '[space]':
-            utt = utt[1:]
+    while len(utt) and utt[-1] == '[space]':
+        utt = utt[:-1]
+    while len(utt) and utt[0] == '[space]':
+        utt = utt[1:]
 
     # TODO Replace in training text instead
     utt_str = ''.join([c if c != '[space]' else ' ' for c in utt])
 
+    '''
     utt_str = utt_str.replace('can\'t', 'cannot')
     utt_str = utt_str.replace('let\'s', 'let us')
 
@@ -85,14 +85,11 @@ def replace_contractions(utt):
     utt_str = utt_str.replace('n\'t', ' not')
     utt_str = utt_str.replace('\'ve', ' have')
 
-    ''' Different between swbd and callhm?
-    utt_str = utt_str.replace('uh-huh', 'um-hum')
-    utt_str = utt_str.replace('uh-hum', 'um-hum')
-    '''
     utt_str = utt_str.replace(' uh', '')
     utt_str = utt_str.replace(' um', '')
     utt_str = utt_str.replace('uh ', '')
     utt_str = utt_str.replace('um ', '')
+    '''
 
     utt = [c if c != ' ' else '[space]' for c in list(utt_str)]
     return utt
@@ -127,7 +124,7 @@ def compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subse
     #pbar = ProgressBar(maxval=len(hyps)).start()
 
     k = 0
-    for (hyp, ref, hypscore, refscore) in zip(hyps, refs, hypscores, refscores):
+    for (hyp, ref, hypscore, refscore) in reversed(zip(hyps, refs, hypscores, refscores)):
         #hyp = replace_contractions(hyp)
         dist, eq, ins, dels, subs, errs_by_pos, hyp_corr, ref_corr = ed(hyp, ref)
         tot_eq += eq

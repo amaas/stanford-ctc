@@ -5,7 +5,7 @@ EGS_DIR = '/deep/group/speech/zxie/kaldi-stanford/kaldi-trunk/egs'
 
 DATASET = 'swbd'
 
-SCAIL_DATA_DIR = '/scail/data/group/deeplearning/u/zxie'
+SCAIL_DATA_DIR = '/deep/u/zxie'
 
 # CTC Parameters
 
