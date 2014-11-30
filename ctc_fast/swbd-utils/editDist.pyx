@@ -6,6 +6,31 @@ from libc cimport math
 import numpy as np
 cimport numpy as np
 
+
+# Compute correspondences between characters in
+# reference utterance to characters in hypothesis
+def ref_to_hyp(hyp_corr, ref_corr):
+    cdef int j, k, c
+    r2h = list()
+    k = 0
+    c = 0
+    for j in xrange(len(ref_corr)):
+        if ref_corr[j] == '<del>':
+            c += 1
+            k += 1
+            continue
+        if hyp_corr[k] == '<ins>':
+            # TODO Interpolate? Or actually go back and try
+            # and get the CTC alignment if possible?
+            k += 1
+            r2h.append(c)
+            continue
+        r2h.append(c)
+        c += 1
+        k += 1
+    return r2h
+
+
 def edit_distance(hyp, ref):
     '''
     Return minimum edit distance statistics as well

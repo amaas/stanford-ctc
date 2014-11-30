@@ -20,7 +20,7 @@ if DATASET == 'wsj':
     LAYER_SIZE = 1824
 elif DATASET == 'swbd':
     DATA_SUBSET = 'eval2000'
-    #DATA_SUBSET = 'dev'
+    #DATA_SUBSET = 'train'
     DATA_DIR = pjoin(EGS_DIR, 'swbd/s5b/exp/%s_ctc/' % DATA_SUBSET)
     INPUT_DIM = 11*13
     RAW_DIM = 21*13
@@ -40,7 +40,7 @@ if DATASET == 'wsj':
     CHARMAP_PATH = pjoin(EGS_DIR, 'wsj/s6/ctc-utils/')
 elif DATASET == 'swbd':
     SPACE = '[space]'
-    SPECIALS_LIST = frozenset(['[vocalized-noise]', '[laughter]', '[space]', '[noise]'])
+    SPECIALS_LIST = frozenset(['[vocalized-noise]', '[laughter]', '[space]', '[noise]', '(%hesitation)'])
     CHARMAP_PATH = pjoin(EGS_DIR, 'swbd/s5b/ctc-utils/')
 
 LM_ORDER = 20

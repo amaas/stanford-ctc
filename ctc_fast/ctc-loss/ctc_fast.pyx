@@ -167,6 +167,7 @@ def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
     # Collapse phone string
     cdef unsigned int i, b
     hyp = []
+    align = []
     for i in xrange(T):
         b = best_path[i]
         # ignore blanks
@@ -178,8 +179,10 @@ def decode_best_path(double[::1,:] probs not None, unsigned int blank=0):
             continue
         # ignore repeats
         elif i != 0 and  b == best_path[i-1]:
+            align[-1] = i
             continue
         else:
             hyp.append(b)
-    return hyp
+            align.append(i)
+    return hyp, align
 

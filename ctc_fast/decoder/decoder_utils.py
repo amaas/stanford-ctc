@@ -73,9 +73,10 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm2', clm=None):
 
     # Various decoding options
 
+    align = None
     if method == 'pmax':
         # Pointwise argmax
-        hyp = ctc.decode_best_path(probs)
+        hyp, align = ctc.decode_best_path(probs)
     elif method == 'bg':
         import prefixTree
         # Bigram LM w/ prefix tree dictionary constraint
@@ -105,4 +106,4 @@ def decode(probs, alpha=1.0, beta=0.0, beam=100, method='clm2', clm=None):
     else:
         assert False, 'No such decoding method: %s' % method
 
-    return hyp, hypScore, refScore
+    return hyp, hypScore, refScore, align

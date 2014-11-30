@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 from os.path import join as pjoin
 import dataLoader as dl
@@ -6,7 +7,7 @@ import cPickle as pickle
 from collections import defaultdict
 from joblib import Parallel, delayed
 from decoder.decoder_config import SPACE, SCAIL_DATA_DIR,\
-        INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET
+        INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET, SPECIALS_LIST
 from cluster.config import NUM_CPUS, CLUSTER_DIR, PYTHON_CMD
 from cluster.utils import get_free_nodes, run_cpu_job
 from decoder.decoder_utils import decode
@@ -30,29 +31,44 @@ def get_char_map(dataDir):
         labels = dict((int(k), v) for v, k in labels)
     return labels
 
+# NOTE Just for SWBD
+PATTERN = re.compile('[a-z\-\'\&\/ ]+', re.UNICODE)
 
 def decode_utterance(k, probs, labels, phone_map, lm=None):
     labels = np.array(labels, dtype=np.int32)
-    # Build sentence for lm
-    sentence = []
-    ref = []
-    word = ""
-    for a in labels:
-        token = phone_map[a]
-        ref.append(token)
-        if token != SPACE:
-            word += token
-        else:
-            sentence.append(word)
-            word = ""
-    #ref = [phone_map[int(r)] for r in labels]
-
     probs = probs.astype(np.float64)
 
-    hyp, hypscore, truescore = decode(probs,
-            alpha=3.0, beta=1.5, beam=100, method='clm2', clm=lm)
+    hyp0, hypscore, truescore, align = decode(probs,
+            alpha=1.25, beta=1.5, beam=100, method='clm2', clm=lm)
 
-    return (hyp, ref, hypscore, truescore)
+    # Filter away special symbols and strip away starting
+    # and ending spaces
+
+    ref = []
+    for a in labels:
+        token = phone_map[a]
+        # Filter away special symbols, numbers, and extra spaces
+        if (token == SPACE and len(ref) > 0 and ref[-1] != SPACE)\
+                or (token not in SPECIALS_LIST and PATTERN.match(token)):
+            ref.append(token)
+    while len(ref) and ref[-1] == SPACE:
+        ref = ref[:-1]
+    while len(ref) and ref[0] == SPACE:
+        ref = ref[1:]
+
+    hyp = []
+    for a in hyp0:
+        token = phone_map[a]
+        # Filter away special symbols, numbers, and extra spaces
+        if (token == SPACE and len(hyp) > 0 and hyp[-1] != SPACE)\
+                or (token not in SPECIALS_LIST and PATTERN.match(token)):
+            hyp.append(token)
+    while len(hyp) and hyp[-1] == SPACE:
+        hyp = hyp[:-1]
+    while len(hyp) and hyp[0] == SPACE:
+        hyp = hyp[1:]
+
+    return (hyp, ref, hypscore, truescore, align)
 
 
 def runSeq(opts):
@@ -71,10 +87,12 @@ def runSeq(opts):
     refscores = list()
     numphones = list()
     subsets = list()
+    alignments = list()
 
     cfg_file = '/deep/u/zxie/dnn/6/cfg.json'
     cfg = load_config(cfg_file)
     model_class, model_hps = get_model_class_and_params('dnn')
+    #model_class, model_hps = get_model_class_and_params('nnjm')
     opt_hps = OptimizerHyperparams()
     model_hps.set_from_dict(cfg)
     opt_hps.set_from_dict(cfg)
@@ -85,7 +103,9 @@ def runSeq(opts):
     #clm = None
 
     for i in range(opts.start_file, opts.start_file + opts.numFiles):
-        data_dict, alis, keys, sizes = loader.loadDataFileDict(i)
+        data_dict, alis, keys, _ = loader.loadDataFileDict(i)
+        # For later alignments
+        keys = sorted(keys)
 
         # For Switchboard filter
         if DATA_SUBSET == 'eval2000':
@@ -102,12 +122,11 @@ def runSeq(opts):
         print 'Decoding utterances in parallel, n_jobs=%d, file=%d' % (NUM_CPUS, i)
         decoded_utts = Parallel(n_jobs=NUM_CPUS)(delayed(decode_utterance)(k, probs_dict[k], alis[k], phone_map, lm=clm) for k in keys)
 
-        for k, (hyp, ref, hypscore, refscore) in zip(keys, decoded_utts):
+        for k, (hyp, ref, hypscore, refscore, align) in zip(keys, decoded_utts):
             if refscore is None:
                 refscore = 0.0
             if hypscore is None:
                 hypscore = 0.0
-            hyp = [phone_map[h] for h in hyp]
             hyp = replace_contractions(hyp)
             fid.write(k + ' ' + ' '.join(hyp) + '\n')
 
@@ -117,6 +136,7 @@ def runSeq(opts):
             refscores.append(refscore)
             numphones.append(len(alis[k]))
             subsets.append('callhm' if k.startswith('en') else 'swbd')
+            alignments.append(align)
 
     fid.close()
 
@@ -128,6 +148,7 @@ def runSeq(opts):
     pickle.dump(refscores, pkid)
     pickle.dump(numphones, pkid)
     pickle.dump(subsets, pkid)
+    pickle.dump(alignments, pkid)
     pkid.close()
 
 
@@ -175,6 +196,7 @@ def runParallel(opts):
     refscores = list()
     numphones = list()
     subsets = list()
+    alignments = list()
     for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
         fi = '%s.%d' % (opts.out_file, i)
         fi_pk = fi.replace('.txt', '.pk')
@@ -189,12 +211,14 @@ def runParallel(opts):
             rs = pickle.load(f)
             np = pickle.load(f)
             ss = pickle.load(f)
+            al = pickle.load(f)
             hyps += h
             refs += r
             hypscores += hs
             refscores += rs
             numphones += np
             subsets += ss
+            alignments += al
         # Cleanup
         os.remove(fi)
         os.remove(fi_pk)
@@ -207,6 +231,7 @@ def runParallel(opts):
         pickle.dump(refscores, fout)
         pickle.dump(numphones, fout)
         pickle.dump(subsets, fout)
+        pickle.dump(alignments, fout)
 
 
 if __name__ == '__main__':

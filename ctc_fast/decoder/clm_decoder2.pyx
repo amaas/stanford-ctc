@@ -8,6 +8,7 @@ import collections
 from decoder_utils import int_to_char, load_char_map
 from decoder_config import LM_ORDER
 from rnn import one_hot
+from ctc_loader import SOURCE_CONTEXT, blank_loglikes, NUM_CHARS
 
 
 cdef double combine(double a,double b,double c=float('-inf')):
@@ -43,10 +44,16 @@ cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER
     s = int_to_char(prefix[-1:-1-order:-1], char_map)
     if len(s) < order - 1:
         s = s + ['<s>']
+    # TODO Fix log10
     return lm.logprob_strings(char_map[query_char], s)
 
 
-def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
+def lm_score_chars(lm, char_map, char_inds, prefix, ctc_probs=None, order=LM_ORDER):
+    if ctc_probs is not None:
+        ctc_probs = np.array(ctc_probs).reshape((NUM_CHARS, -1))
+        if ctc_probs.shape[1] < SOURCE_CONTEXT:
+            left = blank_loglikes(SOURCE_CONTEXT - ctc_probs.shape[1])
+            ctc_probs = np.hstack((ctc_probs, left))
     s = int_to_char(prefix[-order+1:], char_map)
     if len(s) < order - 1:
         s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
@@ -55,6 +62,10 @@ def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
     #data = np.expand_dims(data, 1)
     data = one_hot(data, len(char_map))
     data = data.reshape((-1, data.shape[2]))
+    if ctc_probs is not None:
+        # FIXME
+        ctc_probs = np.log((1-np.exp(np.array(ctc_probs).reshape((-1, 1)))) + 1e-10)
+        data = (data, ctc_probs)
     _, probs = lm.cost_and_grad(data, None)
     #probs = probs[:, -1, :]
     #data = data.reshape((data.size, 1))
@@ -62,7 +73,9 @@ def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER):
     #for k in range(probs.shape[0]):
         #print inds[k], probs[k]
     #assert False
-    return np.log10(probs.ravel())
+    probs = probs.ravel()
+    #print probs
+    return np.log(probs)
 
 
 def decode_clm(double[::1,:] probs not None, lm,
@@ -70,7 +83,7 @@ def decode_clm(double[::1,:] probs not None, lm,
 
     cdef unsigned int N = probs.shape[0]
     cdef unsigned int T = probs.shape[1]
-    cdef unsigned int t, i
+    cdef unsigned int t, i, k
     cdef float v0, v1, v2, v3
 
     char_map = load_char_map()
@@ -84,7 +97,6 @@ def decode_clm(double[::1,:] probs not None, lm,
     Hold = collections.defaultdict(initFn)
 
     # loop over time
-    cdef double lm_prob_sum = 0
     for t in xrange(T):
         Hcurr = dict(Hcurr)
         Hnext = collections.defaultdict(initFn)
@@ -110,7 +122,6 @@ def decode_clm(double[::1,:] probs not None, lm,
                 valsN = Hnext[nprefix]
 
                 lm_prob = alpha * cprobs[char_inds[char_map[i]]]
-                lm_prob_sum += lm_prob
 
                 valsN[2] = numC + 1
 
@@ -136,6 +147,7 @@ def decode_clm(double[::1,:] probs not None, lm,
         if t == T - 1:
             # Apply the end of sentence </s> LM probability as well
             for prefix, (v0, v1, numC) in Hnext.iteritems():
+                #cprobs = lm_score_chars(lm, char_map, char_inds, prefix, probs[:, t])
                 cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
                 lm_prob = cprobs[char_inds['</s>']]
                 Hnext[prefix][0] = combine(v0 + lm_prob, v1 + lm_prob, Hnext[prefix][0])

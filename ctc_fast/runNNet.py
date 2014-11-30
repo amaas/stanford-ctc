@@ -51,6 +51,7 @@ def run(args=None):
     parser.add_option("--dataDir", dest="dataDir", type="string",
                       default=TRAIN_DATA_DIR['fbank'])
     parser.add_option('--alisDir', dest='alisDir', type='string', default=TRAIN_ALIS_DIR)
+    parser.add_option('--startFile', dest='startFile', type='int', default=1, help='Start file for running testing')
     parser.add_option("--numFiles", dest="numFiles", type="int", default=384)
     parser.add_option(
         "--inputDim", dest="inputDim", type="int", default=41 * 15)
@@ -97,6 +98,7 @@ def run(args=None):
     if opts.test:
         cfg['dataDir'] = opts.dataDir
         cfg['numFiles'] = opts.numFiles
+        cfg['startFile'] = opts.startFile
     if 'reg' not in cfg:
         cfg['reg'] = 0.0
 
@@ -231,7 +233,7 @@ def test(opts):
     out_dir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s_%s' % (DATASET, DATA_SUBSET))
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    for i in range(1, opts.numFiles + 1):
+    for i in range(opts.startFile, opts.numFiles + 1):
         writeLogLikes(loader, nn, i, out_dir, writePickle=True)
 
     # TODO Hook up with runDecode to do CER and WER computation

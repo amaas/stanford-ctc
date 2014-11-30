@@ -180,8 +180,7 @@ def main(args):
     hypscores = np.array(pickle.load(fid))
     refscores = np.array(pickle.load(fid))
     numphones = np.array(pickle.load(fid))
-    #subsets = np.array(pickle.load(fid))
-    subsets = None
+    subsets = pickle.load(fid)
     fid.close()
 
     compute_and_display_stats(hyps, refs, hypscores, refscores, numphones, subsets, subset=None, display=args.display)
