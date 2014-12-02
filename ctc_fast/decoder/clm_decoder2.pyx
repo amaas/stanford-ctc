@@ -25,8 +25,20 @@ cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER
     s = int_to_char(prefix[-1:-1-order:-1], char_map)
     if len(s) < order - 1:
         s = s + ['<s>']
-    # TODO Fix log10
-    return lm.logprob_strings(char_map[query_char], s)
+    # NOTE srilm gives log10
+    return 10**lm.logprob_strings(char_map[query_char], s)
+
+
+def ngram_score_chars(lm, char_map, prefix, char_inds, N, order=LM_ORDER):
+    cprobs = np.ones(N) * 1e-5  # FIXME
+    cdef unsigned int j
+    for j in xrange(1, N):
+        if char_map[j] not in char_inds:
+            continue
+        cprobs[char_inds[char_map[j]]] = lm_score_final_char(lm, char_map, prefix, j)
+    cprobs = cprobs / np.linalg.norm(cprobs)
+    cprobs = np.log(cprobs)
+    return cprobs
 
 
 def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER, prev_h0=None):
@@ -34,9 +46,6 @@ def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER, prev_h0=None
         s = int_to_char(prefix[-1:], char_map)
         if len(s) < 1:
             s = ['<s>']
-            assert prev_h0 is None
-        else:
-            assert prev_h0 is not None
     else:
         s = int_to_char(prefix[-order+1:], char_map)
         if len(s) < order - 1:
@@ -106,7 +115,9 @@ def decode_clm(double[::1,:] probs not None, lm,
                 # Handle collapsing
                 valsP[0] = combine(v0+probs[prefix[-1],t],valsP[0])
 
-            if MODEL_TYPE == 'rnn':
+            if MODEL_TYPE == 'ngram':
+                cprobs = ngram_score_chars(lm, char_map, prefix, char_inds, N)
+            elif MODEL_TYPE == 'rnn':
                 cprobs = rnn_lm_score_chars(lm, char_map, char_inds, prefix, hidden_state_cache)
             else:
                 cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
@@ -144,7 +155,9 @@ def decode_clm(double[::1,:] probs not None, lm,
         if t == T - 1:
             # Apply the end of sentence </s> LM probability as well
             for prefix, (v0, v1, numC) in Hnext.iteritems():
-                if MODEL_TYPE == 'rnn':
+                if MODEL_TYPE == 'ngram':
+                    cprobs = ngram_score_chars(lm, char_map, prefix, char_inds, N)
+                elif MODEL_TYPE == 'rnn':
                     cprobs = rnn_lm_score_chars(lm, char_map, char_inds, prefix, hidden_state_cache)
                 else:
                     cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
