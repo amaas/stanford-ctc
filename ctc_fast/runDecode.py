@@ -43,7 +43,7 @@ def decode_utterance(k, probs, labels, phone_map, lm=None):
     alpha = 1.25
     beta = 1.5
     hyp0, hypscore, truescore, align = decode(probs,
-            alpha=alpha, beta=beta, beam=10, method='clm2', clm=lm)
+            alpha=alpha, beta=beta, beam=100, method='clm2', clm=lm)
 
     # Filter away special symbols and strip away starting
     # and ending spaces

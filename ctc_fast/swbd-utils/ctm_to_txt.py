@@ -6,7 +6,8 @@ since HMM-GMM baseline uses lattices and we only have the .ctm file
 for scoring
 '''
 
-CTM_FILE = '/deep/group/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_15/eval2000.ctm'
+#CTM_FILE = '/deep/group/speech/zxie/kaldi-stanford/kaldi-trunk/egs/swbd/s5b/exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_15/eval2000.ctm'
+CTM_FILE = '/deep/u/zxie/ctc_clm_transcripts/eval2000_text_dnn.ctm'
 
 # Need this to determine which words from ctm file belong to which utterance
 REF_UTT_FILE = '/deep/u/zxie/ctc_clm_transcripts/eval2000_text_ref'
