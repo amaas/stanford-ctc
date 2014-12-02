@@ -9,6 +9,7 @@ from decoder_utils import int_to_char, load_char_map
 from decoder_config import LM_ORDER
 from rnn import one_hot
 from ctc_loader import SOURCE_CONTEXT, blank_loglikes, NUM_CHARS
+from runDecode import MODEL_TYPE
 
 
 cdef double combine(double a,double b,double c=float('-inf')):
@@ -18,26 +19,6 @@ cdef double combine(double a,double b,double c=float('-inf')):
     else:
         return math.log(psum)
 
-'''
-def lm_score_final_char(lm, chars, prefix, query_char):
-    """
-    uses lm to score entire prefix
-    returns only the log prob of final char
-    """
-    # convert prefix and query to actual text
-    # TODO why is prefix a tuple?
-    prefix = list(prefix)
-    #print prefix
-    prefix_str = ' '.join(int_to_char(prefix+[query_char], chars))
-    #print prefix_str
-    prefix_scores = lm.full_scores(prefix_str)
-    words = ['<s>'] + prefix_str.split() + ['</s>']
-    #TODO verify lm is not returning score for </s>
-    prob_list = [x[0] for x in prefix_scores]
-    #for i, (prob, length) in enumerate(prefix_scores):
-    #    print words[i], length, prob
-    return prob_list[-1]
-'''
 
 cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER):
     # Have to reverse prefix for srilm
@@ -48,34 +29,43 @@ cdef double lm_score_final_char(lm, char_map, prefix, query_char, order=LM_ORDER
     return lm.logprob_strings(char_map[query_char], s)
 
 
-def lm_score_chars(lm, char_map, char_inds, prefix, ctc_probs=None, order=LM_ORDER):
-    if ctc_probs is not None:
-        ctc_probs = np.array(ctc_probs).reshape((NUM_CHARS, -1))
-        if ctc_probs.shape[1] < SOURCE_CONTEXT:
-            left = blank_loglikes(SOURCE_CONTEXT - ctc_probs.shape[1])
-            ctc_probs = np.hstack((ctc_probs, left))
-    s = int_to_char(prefix[-order+1:], char_map)
-    if len(s) < order - 1:
-        s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
-    #print s
+def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER, prev_h0=None):
+    if MODEL_TYPE == 'rnn':
+        s = int_to_char(prefix[-1:], char_map)
+        if len(s) < 1:
+            s = ['<s>']
+            assert prev_h0 is None
+        else:
+            assert prev_h0 is not None
+    else:
+        s = int_to_char(prefix[-order+1:], char_map)
+        if len(s) < order - 1:
+            s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
+
     data = np.array([char_inds[c] for c in s], dtype=np.int8).reshape((-1, 1))
-    #data = np.expand_dims(data, 1)
     data = one_hot(data, len(char_map))
-    data = data.reshape((-1, data.shape[2]))
-    if ctc_probs is not None:
-        # FIXME
-        ctc_probs = np.log((1-np.exp(np.array(ctc_probs).reshape((-1, 1)))) + 1e-10)
-        data = (data, ctc_probs)
-    _, probs = lm.cost_and_grad(data, None)
-    #probs = probs[:, -1, :]
-    #data = data.reshape((data.size, 1))
-    #inds = dict((v, k) for (k, v) in char_inds.iteritems())
-    #for k in range(probs.shape[0]):
-        #print inds[k], probs[k]
-    #assert False
+
+    if MODEL_TYPE == 'rnn':
+        _, probs = lm.cost_and_grad(data, None, prev_h0=prev_h0)
+        probs = probs[:, -1, :]
+    else:
+        data = data.reshape((-1, data.shape[2]))
+        _, probs = lm.cost_and_grad(data, None)
+
     probs = probs.ravel()
-    #print probs
-    return np.log(probs)
+    if MODEL_TYPE == 'rnn':
+        return np.log(probs), lm.last_h
+    else:
+        return np.log(probs)
+
+
+def rnn_lm_score_chars(lm, char_map, char_inds, prefix, hidden_state_cache):
+    if len(prefix) > 0 and prefix[:-1] in hidden_state_cache:
+        cprobs, curr_h0 = lm_score_chars(lm, char_map, char_inds, prefix, prev_h0=hidden_state_cache[prefix[:-1]])
+    else:
+        cprobs, curr_h0 = lm_score_chars(lm, char_map, char_inds, prefix, prev_h0=None)
+    hidden_state_cache[prefix] = curr_h0
+    return cprobs
 
 
 def decode_clm(double[::1,:] probs not None, lm,
@@ -96,6 +86,10 @@ def decode_clm(double[::1,:] probs not None, lm,
     Hcurr = [[(),[float('-inf'),0.0,0]]]
     Hold = collections.defaultdict(initFn)
 
+    # For RNN, save computations
+    if MODEL_TYPE == 'rnn':
+        hidden_state_cache = dict()
+
     # loop over time
     for t in xrange(T):
         Hcurr = dict(Hcurr)
@@ -112,7 +106,10 @@ def decode_clm(double[::1,:] probs not None, lm,
                 # Handle collapsing
                 valsP[0] = combine(v0+probs[prefix[-1],t],valsP[0])
 
-            cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
+            if MODEL_TYPE == 'rnn':
+                cprobs = rnn_lm_score_chars(lm, char_map, char_inds, prefix, hidden_state_cache)
+            else:
+                cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
 
             for i in xrange(1, N):
                 if char_map[i] not in char_inds:
@@ -147,10 +144,21 @@ def decode_clm(double[::1,:] probs not None, lm,
         if t == T - 1:
             # Apply the end of sentence </s> LM probability as well
             for prefix, (v0, v1, numC) in Hnext.iteritems():
-                #cprobs = lm_score_chars(lm, char_map, char_inds, prefix, probs[:, t])
-                cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
+                if MODEL_TYPE == 'rnn':
+                    cprobs = rnn_lm_score_chars(lm, char_map, char_inds, prefix, hidden_state_cache)
+                else:
+                    cprobs = lm_score_chars(lm, char_map, char_inds, prefix)
                 lm_prob = cprobs[char_inds['</s>']]
                 Hnext[prefix][0] = combine(v0 + lm_prob, v1 + lm_prob, Hnext[prefix][0])
 
         Hcurr = sorted(Hnext.iteritems(), key=keyFn, reverse=True)[:beam]
+
+        # Clear prefixes from cache
+        if MODEL_TYPE == 'rnn':
+            curr_ps = set([p[:-1] for p in dict(Hcurr).keys()])
+            ps = hidden_state_cache.keys()
+            for p in ps:
+                if p not in curr_ps:
+                    del hidden_state_cache[p]
+
     return list(Hcurr[0][0]),keyFn(Hcurr[0])

@@ -34,12 +34,14 @@ def get_char_map(dataDir):
 # NOTE Just for SWBD
 PATTERN = re.compile('[a-z\-\'\&\/ ]+', re.UNICODE)
 
+MODEL_TYPE = 'dnn'
+
 def decode_utterance(k, probs, labels, phone_map, lm=None):
     labels = np.array(labels, dtype=np.int32)
     probs = probs.astype(np.float64)
 
     hyp0, hypscore, truescore, align = decode(probs,
-            alpha=1.25, beta=1.5, beam=100, method='clm2', clm=lm)
+            alpha=1.25, beta=1.5, beam=10, method='pmax', clm=lm)
 
     # Filter away special symbols and strip away starting
     # and ending spaces
@@ -89,16 +91,19 @@ def runSeq(opts):
     subsets = list()
     alignments = list()
 
+    #cfg_file = '/deep/u/zxie/rnnlm/7/cfg.json'
+    #params_file = '/deep/u/zxie/rnnlm/7/params.pk'
     cfg_file = '/deep/u/zxie/dnn/6/cfg.json'
+    params_file = '/deep/u/zxie/dnn/6/params.pk'
+
     cfg = load_config(cfg_file)
-    model_class, model_hps = get_model_class_and_params('dnn')
-    #model_class, model_hps = get_model_class_and_params('nnjm')
+    model_class, model_hps = get_model_class_and_params(MODEL_TYPE)
     opt_hps = OptimizerHyperparams()
     model_hps.set_from_dict(cfg)
     opt_hps.set_from_dict(cfg)
 
     clm = model_class(None, model_hps, opt_hps, train=False, opt='nag')
-    with open('/deep/u/zxie/dnn/6/params.pk', 'rb') as fin:
+    with open(params_file, 'rb') as fin:
         clm.from_file(fin)
     #clm = None
 
