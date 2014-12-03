@@ -7,14 +7,6 @@ Write utts from text files to pickle format so that we can
 run error analysis
 '''
 
-# hyps
-# refs
-# hypscores
-# refscores
-# numphones
-# subsets
-
-
 def load_utts(f):
     utts = list()
     with open(f, 'r') as fin:
@@ -22,6 +14,7 @@ def load_utts(f):
     for l in lines:
         utt = l.split(' ', 1)[1].strip()
         utt = ''.join([c for c in utt if PATTERN.match(c)])
+        utt = re.sub('\s\s+', ' ', utt)
         utts.append(utt)
     return utts
 

@@ -1,10 +1,19 @@
-def load_hyp_txt(file="mergehyp.txt"):
+import sys
+
+if len(sys.argv) > 1 and sys.argv[1] == 'oov':
+    hyp_ctm = 'oovhyp.ctm'
+    merge_file = 'oovmergehyp.txt'
+else:
+    hyp_ctm = 'hyp.ctm'
+    merge_file = 'mergehyp.txt'
+
+def load_hyp_txt(file=merge_file):
     with open(file, 'r') as fid:
         lines = fid.readlines()
     return lines
 
 def write_ctm():
-    fid = open('hyp.ctm', 'w')
+    fid = open(hyp_ctm, 'w')
     lines = load_hyp_txt()
     form = '%s %s %0.2f %0.2f %s\n'
     for l in lines:
