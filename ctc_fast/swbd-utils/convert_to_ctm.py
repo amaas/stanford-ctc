@@ -3,6 +3,9 @@ import sys
 if len(sys.argv) > 1 and sys.argv[1] == 'oov':
     hyp_ctm = 'oovhyp.ctm'
     merge_file = 'oovmergehyp.txt'
+elif len(sys.argv) > 1 and sys.argv[1] == 'frag':
+    hyp_ctm = 'fraghyp.ctm'
+    merge_file = 'fragmergehyp.txt'
 else:
     hyp_ctm = 'hyp.ctm'
     merge_file = 'mergehyp.txt'
@@ -17,8 +20,10 @@ def write_ctm():
     lines = load_hyp_txt()
     form = '%s %s %0.2f %0.2f %s\n'
     for l in lines:
-        l = l.strip().split()
+        l = l.split(' ')
+        assert len(l) > 1
         k, words = l[0], l[1:]
+        words = [w.strip() for w in words]
         times = k.split('_')[2]
         start_time, end_time = [int(x) / 100.0 for x in times.split('-')]
         duration = end_time - start_time
