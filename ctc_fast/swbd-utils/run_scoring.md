@@ -12,3 +12,5 @@ or
 TODO diff the two and update oov scoring
 
 Then just run ./testFrag.sh or ./testOov.sh
+
+For fragments, remember to turn off -F option in hubscr.pl
