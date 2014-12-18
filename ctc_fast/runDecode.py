@@ -1,14 +1,14 @@
 import os
 import re
+import time
 import numpy as np
 from os.path import join as pjoin
 import dataLoader as dl
 import cPickle as pickle
-from collections import defaultdict
 from joblib import Parallel, delayed
 from decoder.decoder_config import SPACE, SCAIL_DATA_DIR,\
         INPUT_DIM, RAW_DIM, DATASET, DATA_SUBSET, SPECIALS_LIST
-from cluster.config import NUM_CPUS, CLUSTER_DIR, PYTHON_CMD
+from cluster.config import NUM_CPUS, CLUSTER_DIR, PYTHON_CMD, SLEEP_SEC
 from cluster.utils import get_free_nodes, run_cpu_job
 from decoder.decoder_utils import decode
 if DATA_SUBSET == 'eval2000':
@@ -34,16 +34,18 @@ def get_char_map(dataDir):
 # NOTE Just for SWBD
 PATTERN = re.compile('[a-z\-\'\&\/ ]+', re.UNICODE)
 
-MODEL_TYPE = 'ngram'
+MODEL_TYPE = 'rnn'
+
+LIKELIHOODS_DIR = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s_%s' % (DATASET, DATA_SUBSET))
 
 def decode_utterance(k, probs, labels, phone_map, lm=None):
     labels = np.array(labels, dtype=np.int32)
     probs = probs.astype(np.float64)
 
-    alpha = 1.25
+    alpha = 1.5
     beta = 1.5
     hyp0, hypscore, truescore, align = decode(probs,
-            alpha=alpha, beta=beta, beam=100, method='clm2', clm=lm)
+            alpha=alpha, beta=beta, beam=150, method='clm2', clm=lm)
 
     # Filter away special symbols and strip away starting
     # and ending spaces
@@ -83,7 +85,6 @@ def runSeq(opts):
 
     alisDir = opts.alisDir if opts.alisDir else opts.dataDir
     loader = dl.DataLoader(opts.dataDir, opts.rawDim, opts.inputDim, alisDir)
-    likelihoodsDir = pjoin(SCAIL_DATA_DIR, 'ctc_loglikes_%s_%s' % (DATASET, DATA_SUBSET))
 
     hyps = list()
     refs = list()
@@ -94,10 +95,10 @@ def runSeq(opts):
     alignments = list()
 
     if MODEL_TYPE != 'ngram':
-        #cfg_file = '/deep/u/zxie/rnnlm/7/cfg.json'
-        #params_file = '/deep/u/zxie/rnnlm/7/params.pk'
-        cfg_file = '/deep/u/zxie/dnn/6/cfg.json'
-        params_file = '/deep/u/zxie/dnn/6/params.pk'
+        cfg_file = '/deep/u/zxie/rnnlm/13/cfg.json'
+        params_file = '/deep/u/zxie/rnnlm/13/params.pk'
+        #cfg_file = '/deep/u/zxie/dnn/11/cfg.json'
+        #params_file = '/deep/u/zxie/dnn/11/params.pk'
 
         cfg = load_config(cfg_file)
         model_class, model_hps = get_model_class_and_params(MODEL_TYPE)
@@ -128,7 +129,7 @@ def runSeq(opts):
             elif SWBD_SUBSET == 'callhome':
                 keys = [k for k in keys if k.startswith('en')]
 
-        ll_file = pjoin(likelihoodsDir, 'loglikelihoods_%d.pk' % i)
+        ll_file = pjoin(LIKELIHOODS_DIR, 'loglikelihoods_%d.pk' % i)
         ll_fid = open(ll_file, 'rb')
         probs_dict = pickle.load(ll_fid)
 
@@ -166,40 +167,60 @@ def runSeq(opts):
     pkid.close()
 
 
-def runNode(node, node_files_dict, opts):
+def runNode(node, job, opts):
     alisDir = opts.alisDir if opts.alisDir else opts.dataDir
 
     # Create decoding command for each file
-    cmds = list()
-    fns = node_files_dict[node]
-    if len(fns) == 0:
-        return None
-    for fn in fns:
-        cmd = '%s ../runDecode.py --dataDir %s --alisDir %s --numFiles 1 --start_file %d --out_file %s.%d' % (PYTHON_CMD, opts.dataDir, alisDir, fn, opts.out_file, fn)
-        print cmd
-        cmds.append(cmd)
+    cmd = '%s ../runDecode.py --dataDir %s --alisDir %s --numFiles 1 --start_file %d --out_file %s.%d' % (PYTHON_CMD, opts.dataDir, alisDir, job, opts.out_file, job)
+    print cmd
 
-    # Join the commands together and run
     full_cmd = 'cd %s/../%s-utils; source ~/.bashrc; ' % (CLUSTER_DIR, DATASET)
-    full_cmd += '; '.join(cmds)
+    full_cmd += '; ' + cmd
     print full_cmd
-    log_file = '/tmp/%s_decode%s.log' % (DATASET, ','.join([str(x) for x in node_files_dict[node]]))
-    run_cpu_job(node, full_cmd, stdout=open(log_file, 'w'), blocking=True)
+    log_file = '/tmp/%s_decode%s.log' % (DATASET, job)
+    run_cpu_job(node, full_cmd, stdout=open(log_file, 'w'), blocking=False)
     return None
 
 
 def runParallel(opts):
     # FIXME Currently assumes you run this from ./${DATASET}-utils
-    # TODO Get the CER and other stats as a post-processing step
 
-    # Get free machines and split the files evenly between them
-    free_nodes = get_free_nodes('deep')  # PARAM
-    node_files_dict = defaultdict(list)
+    # First distribute all the jobs
+    unsub_jobs = list()
     for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
-        node_files_dict[free_nodes[i % len(free_nodes)]].append(i)
+        unsub_jobs.append(i)
 
-    # Now for each node run decoding of the files assigned to it
-    Parallel(n_jobs=len(free_nodes))(delayed(runNode)(node, node_files_dict, opts) for node in node_files_dict)
+    # Sort files by size so that biggest files are running the whole time
+    # Note that we pop from the end
+    unsub_jobs = sorted(unsub_jobs, key=lambda x: os.path.getsize(pjoin(LIKELIHOODS_DIR, 'loglikelihoods_%d.pk' % x)))
+
+    while len(unsub_jobs):
+        # Get free machines and split the files between them
+        free_nodes = get_free_nodes('deep')  # PARAM
+        for free_node in free_nodes:
+            if len(unsub_jobs):
+                job = unsub_jobs.pop()
+                runNode(free_node, job, opts)
+        if len(unsub_jobs):
+            print '-' * 80
+            print '%d jobs to be submitted...' % len(unsub_jobs)
+            print '-' * 80
+            time.sleep(SLEEP_SEC)
+
+    # Now wait until all the jobs are finished
+    # FIXME Hacky, just checks whether files exist and aren't empty
+    def jobs_left():
+        wait_count = 0
+        for i in xrange(opts.start_file, opts.start_file + opts.numFiles):
+            fi = '%s.%d' % (opts.out_file, i)
+            if not os.path.exists(fi) or os.path.getsize(fi) == 0:
+                wait_count += 1
+        return wait_count
+    while jobs_left() != 0:
+        print '-' * 80
+        print 'Waiting for %d jobs to finish...' % jobs_left()
+        print '-' * 80
+        time.sleep(SLEEP_SEC)
 
     # Now merge the results together into single file like
     # we would get by running sequentially

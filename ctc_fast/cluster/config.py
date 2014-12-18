@@ -1,13 +1,13 @@
 import os
 import multiprocessing
 
-#NUM_CPUS = multiprocessing.cpu_count() - 1
-NUM_CPUS = 1
+NUM_CPUS = multiprocessing.cpu_count() - 1
+#NUM_CPUS = 1
 
 CLUSTER_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CPU_FREE_TOL = 0.5
-RAM_FREE_TOL = 0.2
+CPU_FREE_TOL = 0.4
+RAM_FREE_TOL = 0.6
 
 SSH_CMD = 'ssh -q -x -o ConnectTimeout=10 -o ServerAliveInterval=3'
 PYTHON_CMD = '/afs/cs.stanford.edu/u/zxie/virtualenvs/scl/bin/python'

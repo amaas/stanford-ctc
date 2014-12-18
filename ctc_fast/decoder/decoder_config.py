@@ -45,8 +45,9 @@ elif DATASET == 'swbd':
 
 #LM_ORDER = 5
 #LM_NUM_FILES = 1
-LM_ORDER = 7
-LM_NUM_FILES = 20
+#LM_ORDER = 7
+#LM_NUM_FILES = 20
+LM_ORDER = 20
 #LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.%dg.%d.big_discounts.arpa' % (LM_ORDER, LM_NUM_FILES)
 #LM_ARPA_FILE = '/scail/data/group/deeplearning/u/zxie/biglm/lms/biglm.7g.20.big_discounts.arpa'
 LM_ARPA_FILE = '/deep/u/zxie/ngrams/biglm.7g.20.big_discounts.arpa'

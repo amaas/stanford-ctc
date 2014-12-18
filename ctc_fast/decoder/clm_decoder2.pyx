@@ -7,10 +7,9 @@ np.seterr(all='raise')
 import collections
 from decoder_utils import int_to_char, load_char_map
 from decoder_config import LM_ORDER
-from rnn import one_hot
+from dset_utils import one_hot, one_hot_lists
 from ctc_loader import SOURCE_CONTEXT, blank_loglikes, NUM_CHARS
 from runDecode import MODEL_TYPE
-
 
 cdef double combine(double a,double b,double c=float('-inf')):
     cdef double psum = math.exp(a) + math.exp(b) + math.exp(c)
@@ -43,21 +42,25 @@ def ngram_score_chars(lm, char_map, prefix, char_inds, N, order=LM_ORDER):
 
 def lm_score_chars(lm, char_map, char_inds, prefix, order=LM_ORDER, prev_h0=None):
     if MODEL_TYPE == 'rnn':
-        s = int_to_char(prefix[-1:], char_map)
-        if len(s) < 1:
-            s = ['<s>']
+        if len(prefix) > 0:
+            assert prev_h0 is not None
+            s = int_to_char(prefix[-1:], char_map)
+        else:
+            assert prev_h0 is None
+            s = ['<s>'] + list(int_to_char(prefix, char_map))
     else:
         s = int_to_char(prefix[-order+1:], char_map)
         if len(s) < order - 1:
             s = ['<null>'] * (order - len(s) - 2) + ['<s>'] + s
 
     data = np.array([char_inds[c] for c in s], dtype=np.int8).reshape((-1, 1))
-    data = one_hot(data, len(char_map))
 
     if MODEL_TYPE == 'rnn':
+        data = one_hot_lists(data, len(char_map))
         _, probs = lm.cost_and_grad(data, None, prev_h0=prev_h0)
-        probs = probs[:, -1, :]
+        probs = probs[-1]
     else:
+        data = one_hot(data, len(char_map))
         data = data.reshape((-1, data.shape[2]))
         _, probs = lm.cost_and_grad(data, None)
 
