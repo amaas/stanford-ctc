@@ -1,0 +1,87 @@
+a&e     a and e
+a&m     a and m
+at&t    a t and t
+at&t's  a t and t's
+h&r     h and r
+-1k	- one k
+007     double oh seven
+1       one 
+100     hundred
+101	one oh one
+10a	ten a
+1200	twelve hundred
+125k	one hundred and twenty five k
+128	one twenty eight
+13th	thirteenth
+13ths	thirteenths
+150	one fifty
+1500	fifteen hundred
+2	two
+20/20	twenty twenty
+2000	two thousand
+21	twenty one
+260	two sixty
+286	two eighty six
+287	two eighty seven
+2ci	two c i
+302	three oh two
+365	three sixty five
+380	three eighty
+386	three eighty six
+4-runner four runner
+40-	four oh -
+401-	four oh one -
+401k	four oh one k
+401k's	four oh one k's
+48	forty eight
+486	four eighty six
+49er	forty niner
+49ers	forty niners
+4h	four h
+4o-	four oh -
+5	five
+500	five hundred
+60	sixty
+635	six thirty five
+635's	six thirty five
+69	sixty nine
+6s	sixes
+7-eleven seven eleven
+7-up	seven up
+7094	seven oh nine four
+747	seven four seven
+8088	eighty eighty eight
+90210	nine oh two one oh
+9050	nine thousand fifty
+911	nine one one
+990	nine ninety
+a1	a one
+ak-47	ak forty seven
+ak-47s	ak forty sevens
+b2	b two
+b6	b six
+catch-22 catch twenty two
+e5	e five
+f-16	f sixteen
+gt1	g t one
+h2s	h twos
+i-25	i twenty five
+i-30	i thirty
+i-70	i seventy
+pac-10	pac ten
+rx7	rx seven
+s-10	s ten
+s-10s	s tens
+s10	s ten
+them_1's them's
+u2	u two
+v-6	v six
+v-8	v eight
+v-8s	v eights
+v8	v eight
+v8s	v eights
+vh1	v h one
+w-2	w two
+w-4	w four
+xt6	xt six
+z248	z two forty eight
